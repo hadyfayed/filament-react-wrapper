@@ -42,6 +42,5 @@
     "support": {
         "issues": "https://github.com/hadyfayed/filament-react-wrapper/issues",
         "source": "https://github.com/hadyfayed/filament-react-wrapper"
-    },
-    "version": "1.0.0"
+    }
 }
