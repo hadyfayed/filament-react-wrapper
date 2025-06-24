@@ -2,6 +2,27 @@
 
 All notable changes to `react-wrapper` will be documented in this file.
 
+## v1.1.1 - 2025-06-24
+
+### Added
+- 📚 **Comprehensive PHP/Laravel Registration Documentation**
+  - Service Provider component registration examples
+  - Configuration-based registration via config files
+  - Artisan commands for component management (`make:react-component`, `react:register`, etc.)
+  - ReactWrapper facade usage examples
+  - ReactField and ReactWidget detailed API documentation
+  - Package integration examples for Laravel package authors
+  - Dynamic registration in Filament resources
+  - Event hooks and listeners documentation
+  - Complete PHP API reference with interfaces
+
+### Enhanced
+- Component registration section now covers both JavaScript and PHP approaches
+- Added real-world examples for package authors and dynamic registration
+- Configuration options documentation with environment variables
+- Artisan command reference with all available commands
+- Event system integration examples
+
 ## v1.1.0 - 2025-06-24
 
 ### Added

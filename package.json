@@ -1,6 +1,6 @@
 {
   "name": "@hadyfayed/filament-react-wrapper",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Universal React component integration system for Filament applications",
   "type": "module",
   "main": "dist/index.es.js",
