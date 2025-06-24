@@ -2,6 +2,16 @@
 
 All notable changes to `react-wrapper` will be documented in this file.
 
+## v1.1.2 - 2025-06-24
+
+### Changed
+- 🔧 **Package Management** - Removed version from composer.json for proper Git tag-based versioning
+- 📦 **Packagist Compatibility** - Optimized for Packagist automatic version detection
+
+### Enhanced
+- 🏷️ **Release Process** - Improved Git tag-based versioning for both NPM and Packagist
+- 📚 **Documentation** - Maintained comprehensive PHP/Laravel and TypeScript coverage
+
 ## v1.1.1 - 2025-06-24
 
 ### Added
