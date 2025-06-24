@@ -185,6 +185,244 @@ const components = [
 registerComponents(components);
 ```
 
+### Registration from Laravel/PHP
+
+You can also register React components from the Laravel/PHP side, which is useful for package authors or when you want to manage component registration through Laravel configuration:
+
+#### Service Provider Registration
+
+```php
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
+use HadyFayed\ReactWrapper\Services\ReactComponentRegistry;
+
+class ReactComponentServiceProvider extends ServiceProvider
+{
+    public function boot()
+    {
+        $registry = app(ReactComponentRegistry::class);
+
+        // Register components with PHP
+        $registry->register([
+            'name' => 'UserCard',
+            'component_path' => 'resources/js/components/UserCard.tsx',
+            'default_props' => [
+                'showAvatar' => true,
+                'size' => 'medium'
+            ],
+            'metadata' => [
+                'category' => 'user',
+                'description' => 'Displays user information in a card format',
+                'tags' => ['user', 'display', 'card']
+            ]
+        ]);
+
+        // Register multiple components
+        $registry->registerMany([
+            [
+                'name' => 'ProductCard',
+                'component_path' => 'resources/js/components/ProductCard.tsx',
+                'default_props' => ['showPrice' => true],
+                'metadata' => ['category' => 'product']
+            ],
+            [
+                'name' => 'OrderSummary', 
+                'component_path' => 'resources/js/components/OrderSummary.tsx',
+                'is_async' => true,
+                'config' => ['lazy' => true, 'cache' => true]
+            ]
+        ]);
+    }
+}
+```
+
+#### Configuration-Based Registration
+
+Add to `config/react-wrapper.php`:
+
+```php
+<?php
+
+return [
+    'components' => [
+        'auto_register' => true,
+        'scan_directories' => [
+            'resources/js/components',
+            'resources/js/widgets'
+        ],
+        'registered_components' => [
+            'UserProfile' => [
+                'component_path' => 'resources/js/components/UserProfile.tsx',
+                'default_props' => ['editable' => false],
+                'config' => ['lazy' => false, 'cache' => true],
+                'metadata' => [
+                    'category' => 'user',
+                    'description' => 'User profile management component'
+                ]
+            ],
+            'DataTable' => [
+                'component_path' => 'resources/js/components/DataTable.tsx',
+                'is_async' => true,
+                'default_props' => [
+                    'pageSize' => 10,
+                    'sortable' => true
+                ],
+                'config' => [
+                    'lazy' => true,
+                    'cache' => true,
+                    'preload' => false
+                ]
+            ]
+        ]
+    ]
+];
+```
+
+#### Artisan Command for Registration
+
+Generate component registration via Artisan:
+
+```bash
+# Create a new React component with auto-registration
+php artisan make:react-component UserDashboard --register
+
+# Register an existing component
+php artisan react:register ProductCard --path=resources/js/components/ProductCard.tsx
+
+# Register multiple components from a directory
+php artisan react:scan resources/js/components --register
+```
+
+#### Facade Usage
+
+Use the ReactWrapper facade for quick registration:
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Facades\ReactWrapper;
+
+// In a controller, middleware, or service
+class ComponentController extends Controller
+{
+    public function registerComponent()
+    {
+        ReactWrapper::register([
+            'name' => 'DynamicChart',
+            'component_path' => 'resources/js/charts/DynamicChart.tsx',
+            'default_props' => [
+                'type' => 'line',
+                'animated' => true
+            ],
+            'config' => [
+                'lazy' => true,
+                'cache' => false // Don't cache dynamic components
+            ]
+        ]);
+
+        return response()->json(['message' => 'Component registered successfully']);
+    }
+
+    public function getRegisteredComponents()
+    {
+        $components = ReactWrapper::getRegistered();
+        return response()->json($components);
+    }
+}
+```
+
+#### Package Integration
+
+For Laravel package authors:
+
+```php
+<?php
+
+namespace YourPackage\Providers;
+
+use Illuminate\Support\ServiceProvider;
+use HadyFayed\ReactWrapper\Services\ReactComponentRegistry;
+
+class YourPackageServiceProvider extends ServiceProvider
+{
+    public function boot()
+    {
+        // Register package components automatically
+        $this->registerPackageComponents();
+        
+        // Publish package components
+        $this->publishes([
+            __DIR__.'/../resources/js/components' => resource_path('js/vendor/your-package'),
+        ], 'your-package-components');
+    }
+
+    protected function registerPackageComponents()
+    {
+        $registry = app(ReactComponentRegistry::class);
+
+        $packageComponents = [
+            'PackageWidget' => [
+                'component_path' => 'js/vendor/your-package/PackageWidget.tsx',
+                'default_props' => ['theme' => 'package-default'],
+                'metadata' => [
+                    'category' => 'package-widgets',
+                    'package' => 'your-package',
+                    'version' => '1.0.0'
+                ]
+            ]
+        ];
+
+        foreach ($packageComponents as $name => $config) {
+            $registry->register(array_merge($config, ['name' => $name]));
+        }
+    }
+}
+```
+
+#### Dynamic Registration in Filament
+
+Register components dynamically in Filament resources:
+
+```php
+<?php
+
+namespace App\Filament\Resources;
+
+use Filament\Resources\Resource;
+use HadyFayed\ReactWrapper\Services\ReactComponentRegistry;
+
+class UserResource extends Resource
+{
+    public static function boot()
+    {
+        parent::boot();
+        
+        // Register resource-specific components
+        app(ReactComponentRegistry::class)->register([
+            'name' => 'UserResourceChart',
+            'component_path' => 'resources/js/filament/UserResourceChart.tsx',
+            'default_props' => [
+                'resource' => 'users',
+                'metric' => 'registrations'
+            ]
+        ]);
+    }
+
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            ReactField::make('user_analytics')
+                ->component('UserResourceChart')
+                ->props(['userId' => fn($record) => $record?->id])
+                ->visible(fn($record) => $record !== null)
+        ]);
+    }
+}
+```
+
 ## 🎯 State Management
 
 ### Using State Manager Provider
@@ -593,6 +831,211 @@ const usePersistedState = <T>(
   defaultValue: T,
   config?: Partial<StatePersistenceConfig>
 ): [T, (value: T | ((prev: T) => T)) => void] => { ... };
+```
+
+### PHP/Laravel API
+
+#### ReactComponentRegistry Service
+
+```php
+<?php
+
+namespace HadyFayed\ReactWrapper\Services;
+
+interface ReactComponentRegistryInterface
+{
+    public function register(array $definition): void;
+    public function registerMany(array $definitions): void;
+    public function get(string $name): ?array;
+    public function has(string $name): bool;
+    public function unregister(string $name): bool;
+    public function clear(): void;
+    public function getRegistered(): array;
+    public function getStats(): array;
+    public function scan(string $directory): array;
+}
+```
+
+#### ReactWrapper Facade
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Facades\ReactWrapper;
+
+// Register component
+ReactWrapper::register([
+    'name' => 'ComponentName',
+    'component_path' => 'path/to/component.tsx',
+    'default_props' => ['prop' => 'value'],
+    'config' => ['lazy' => true, 'cache' => true],
+    'metadata' => ['category' => 'widgets']
+]);
+
+// Register multiple components
+ReactWrapper::registerMany($components);
+
+// Get component definition
+$definition = ReactWrapper::get('ComponentName');
+
+// Check if component exists
+$exists = ReactWrapper::has('ComponentName');
+
+// Get all registered components
+$components = ReactWrapper::getRegistered();
+
+// Get registration statistics
+$stats = ReactWrapper::getStats();
+
+// Scan directory for components
+$found = ReactWrapper::scan('resources/js/components');
+```
+
+#### ReactField Form Component
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Forms\Components\ReactField;
+
+ReactField::make('field_name')
+    ->component('ComponentName')           // React component name
+    ->props(['key' => 'value'])           // Component props
+    ->defaultProps(['default' => true])   // Default props
+    ->statePath('form.field')             // State synchronization path
+    ->height(400)                         // Container height
+    ->width('100%')                       // Container width
+    ->reactive()                          // Make field reactive
+    ->live()                             // Enable live updates
+    ->debounce(300)                      // Debounce updates (ms)
+    ->afterStateUpdated(fn($state) => ...) // State change callback
+    ->visible(fn($get) => $get('show'))   // Conditional visibility
+    ->disabled(fn($get) => !$get('edit')) // Conditional disable
+    ->required()                          // Mark as required
+    ->columnSpan(2)                       // Grid column span
+    ->extraAttributes(['class' => 'custom']); // Additional HTML attributes
+```
+
+#### ReactWidget
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Widgets\ReactWidget;
+
+class CustomWidget extends ReactWidget
+{
+    protected string $component = 'WidgetComponent';
+    
+    protected function getProps(): array
+    {
+        return [
+            'title' => 'Widget Title',
+            'data' => $this->getData(),
+            'config' => $this->getConfig()
+        ];
+    }
+    
+    protected function getHeight(): ?string
+    {
+        return '300px';
+    }
+    
+    protected function getStatePath(): ?string
+    {
+        return 'widgets.custom';
+    }
+    
+    public static function canView(): bool
+    {
+        return auth()->user()?->can('view-widgets') ?? false;
+    }
+}
+```
+
+#### Configuration Options
+
+```php
+<?php
+
+// config/react-wrapper.php
+return [
+    'debug' => env('REACT_WRAPPER_DEBUG', false),
+    'cache_components' => env('REACT_WRAPPER_CACHE', true),
+    'preload_components' => env('REACT_WRAPPER_PRELOAD', false),
+    'max_state_size' => env('REACT_WRAPPER_MAX_STATE_SIZE', 1000),
+    
+    'components' => [
+        'auto_register' => true,
+        'scan_directories' => [
+            'resources/js/components',
+            'resources/js/widgets'
+        ],
+        'registered_components' => [
+            // Component definitions
+        ]
+    ],
+    
+    'memory_safety' => [
+        'max_subscriptions_per_path' => 100,
+        'cleanup_interval' => 300000, // 5 minutes
+        'enable_loop_detection' => true,
+    ],
+    
+    'security' => [
+        'validate_props' => true,
+        'sanitize_html' => true,
+        'max_prop_size' => 1024 * 1024, // 1MB
+    ]
+];
+```
+
+#### Artisan Commands
+
+```bash
+# Create React component with registration
+php artisan make:react-component ComponentName --register
+
+# Register existing component
+php artisan react:register ComponentName --path=resources/js/components/ComponentName.tsx
+
+# Scan and register components from directory
+php artisan react:scan resources/js/components --register
+
+# List registered components
+php artisan react:list
+
+# Clear component registry
+php artisan react:clear
+
+# Show component statistics
+php artisan react:stats
+
+# Generate component registration file
+php artisan react:export --output=bootstrap-components.php
+```
+
+#### Event Hooks
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Events\ComponentRegistered;
+use HadyFayed\ReactWrapper\Events\ComponentRendered;
+
+// Listen for component registration
+Event::listen(ComponentRegistered::class, function ($event) {
+    Log::info('Component registered: ' . $event->componentName);
+});
+
+// Listen for component rendering
+Event::listen(ComponentRendered::class, function ($event) {
+    // Track component usage
+    Analytics::track('component_rendered', [
+        'component' => $event->componentName,
+        'props' => $event->props
+    ]);
+});
 ```
 
 ## 🐛 Debugging & Troubleshooting
