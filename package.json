@@ -1,0 +1,82 @@
+{
+  "name": "@hadyfayed/filament-react-wrapper",
+  "version": "1.0.0",
+  "description": "Universal React component integration system for Filament applications",
+  "type": "module",
+  "main": "dist/core.es.js",
+  "module": "dist/core.es.js",
+  "types": "dist/core.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/core.es.js",
+      "types": "./dist/core.d.ts"
+    },
+    "./bootstrap": {
+      "import": "./dist/bootstrap.es.js",
+      "types": "./dist/types/bootstrap.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "config",
+    "resources",
+    "src"
+  ],
+  "scripts": {
+    "build": "rimraf dist && vite build",
+    "dev": "vite build --watch",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"resources/**/*.{ts,tsx}\"",
+    "analyze": "vite build --mode analyze",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "laravel",
+    "filament",
+    "react",
+    "components",
+    "integration",
+    "php"
+  ],
+  "author": "Hady Fayed <hadyfayed@gmail.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@babel/preset-typescript": "^7.27.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.0",
+    "terser": "^5.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hadyfayed/filament-react-wrapper"
+  },
+  "bugs": {
+    "url": "https://github.com/hadyfayed/filament-react-wrapper/issues"
+  },
+  "homepage": "https://github.com/hadyfayed/filament-react-wrapper#readme"
+}

@@ -1,0 +1,47 @@
+{
+    "name": "hadyfayed/filament-react-wrapper",
+    "description": "React component integration system for FilamentPHP applications",
+    "keywords": ["filament", "react", "integration", "components", "universal", "laravel"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Hady Fayed",
+            "email": "hadyfayed@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0|^12.0",
+        "filament/filament": "^3.0",
+        "livewire/livewire": "^3.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "HadyFayed\\ReactWrapper\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HadyFayed\\ReactWrapper\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "HadyFayed\\ReactWrapper\\ReactWrapperServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "homepage": "https://github.com/hadyfayed/filament-react-wrapper",
+    "support": {
+        "issues": "https://github.com/hadyfayed/filament-react-wrapper/issues",
+        "source": "https://github.com/hadyfayed/filament-react-wrapper"
+    },
+    "version": "1.0.0"
+}
