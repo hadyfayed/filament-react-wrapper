@@ -8,7 +8,7 @@ export interface IStateManagerState {
 }
 
 export interface IStateAction {
-  type: 'SET_STATE' | 'UPDATE_STATE' | 'RESET_STATE' | 'BATCH_UPDATE';
+  type: "SET_STATE" | "UPDATE_STATE" | "RESET_STATE" | "BATCH_UPDATE";
   payload: any;
   path?: string;
 }

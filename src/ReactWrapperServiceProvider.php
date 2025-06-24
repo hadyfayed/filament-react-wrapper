@@ -6,6 +6,7 @@ use HadyFayed\ReactWrapper\Services\ReactComponentRegistry;
 use HadyFayed\ReactWrapper\Services\ExtensionManager;
 use HadyFayed\ReactWrapper\Factories\ReactComponentFactory;
 use HadyFayed\ReactWrapper\Contracts\ReactRegistryInterface;
+use HadyFayed\ReactWrapper\FilamentReactWrapperPlugin;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 
@@ -31,8 +32,7 @@ class ReactWrapperServiceProvider extends ServiceProvider
         // Publish configuration and assets
         $this->publishAssets();
         
-        // Load views
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'react-wrapper');
+        // Note: Views removed - using FilamentAsset for script loading
 
         // Register Blade components
         $this->registerBladeComponents();
@@ -106,22 +106,25 @@ class ReactWrapperServiceProvider extends ServiceProvider
             __DIR__.'/../resources/js' => resource_path('js/react-wrapper'),
         ], 'react-wrapper-assets');
 
-        // Publish bootstrap file for Vite integration
+        // Publish main file for Vite integration
         $this->publishes([
-            __DIR__.'/../resources/js/bootstrap.tsx' => resource_path('js/bootstrap-react.tsx'),
+            __DIR__.'/../resources/js/index.tsx' => resource_path('js/bootstrap-react.tsx'),
         ], 'react-wrapper-bootstrap');
 
-        // Publish views
-        $this->publishes([
-            __DIR__.'/../resources/views' => resource_path('views/react-wrapper'),
-        ], 'react-wrapper-views');
+        // Note: Views removed - asset loading handled by FilamentAsset
+
+        // Publish prebuilt assets for production use (no build step required)
+        if (is_dir(__DIR__.'/../dist/laravel')) {
+            $this->publishes([
+                __DIR__.'/../dist/laravel' => public_path('vendor/react-wrapper'),
+            ], 'react-wrapper-prebuilt');
+        }
 
         // Publish all assets at once
         $this->publishes([
             __DIR__.'/../config/react-wrapper.php' => config_path('react-wrapper.php'),
             __DIR__.'/../resources/js' => resource_path('js/react-wrapper'),
-            __DIR__.'/../resources/views' => resource_path('views/react-wrapper'),
-            __DIR__.'/../resources/js/bootstrap.tsx' => resource_path('js/bootstrap-react.tsx'),
+            __DIR__.'/../resources/js/index.tsx' => resource_path('js/bootstrap-react.tsx'),
         ], 'react-wrapper');
     }
 
@@ -137,9 +140,11 @@ class ReactWrapperServiceProvider extends ServiceProvider
         if (config('react-wrapper.integrations.filament.enabled', true) && 
             class_exists(\Filament\FilamentServiceProvider::class)) {
             
+            // Register the Filament plugin
+            $this->app->singleton(FilamentReactWrapperPlugin::class);
+            
             // Register Filament plugin if auto-register is enabled
             if (config('react-wrapper.integrations.filament.auto_register', true)) {
-                // Plugin registration will be handled by auto-discovery
                 Event::dispatch('react-wrapper.filament.integrating');
             }
         }
@@ -164,12 +169,23 @@ class ReactWrapperServiceProvider extends ServiceProvider
     {
         if (class_exists(\Illuminate\Foundation\Console\AboutCommand::class)) {
             \Illuminate\Foundation\Console\AboutCommand::add('React Wrapper', fn () => [
-                'Version' => '1.0.0',
+                'Version' => $this->getPackageVersion(),
                 'Components Registered' => $this->app->make(ReactComponentRegistry::class)->count(),
                 'Bootstrap Published' => file_exists(resource_path('js/bootstrap-react.tsx')) ? 'Yes' : 'No',
+                'Prebuilt Assets' => file_exists(public_path('vendor/react-wrapper/js/react-wrapper.js')) ? 'Yes' : 'No',
                 'Filament Integration' => config('react-wrapper.integrations.filament.enabled', true) ? 'Enabled' : 'Disabled',
                 'Auto Discovery' => config('react-wrapper.registry.auto_discovery.enabled', true) ? 'Enabled' : 'Disabled',
             ]);
         }
+    }
+
+    protected function getPackageVersion(): string
+    {
+        $composerPath = __DIR__.'/../composer.json';
+        if (file_exists($composerPath)) {
+            $composer = json_decode(file_get_contents($composerPath), true);
+            return $composer['version'] ?? '1.0.0';
+        }
+        return '1.0.0';
     }
 }

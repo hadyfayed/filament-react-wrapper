@@ -22,8 +22,6 @@ export default defineConfig({
     build: {
         lib: {
             entry: {
-                'bootstrap': resolve(__dirname, 'resources/js/bootstrap.tsx'),
-                'core': resolve(__dirname, 'resources/js/core.tsx'),
                 'index': resolve(__dirname, 'resources/js/index.tsx'),
             },
             formats: ['es'],

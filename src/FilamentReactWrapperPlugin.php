@@ -17,28 +17,48 @@ class FilamentReactWrapperPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
-        // Register render hooks for React integration
-        $panel->renderHook(
-            'panels::body.end',
-            fn (): string => view('react-wrapper::filament.scripts')->render()
-        );
-
-        // Assets are loaded via scripts.blade.php with proper module type
+        // Assets are managed through FilamentAsset in boot() method
+        // No manual script inclusion needed
     }
 
     public function boot(Panel $panel): void
     {
-        // Register React wrapper core assets through FilamentAsset
+        // Register React dependencies
         FilamentAsset::register([
-            Js::make('react-wrapper-core', $this->getAssetPath('core.tsx'))
+            Js::make('react', 'https://unpkg.com/react@18/umd/react.production.min.js')
                 ->loadedOnRequest(),
-            Js::make('react-wrapper-state-manager', $this->getAssetPath('components/StateManager.tsx'))
+            Js::make('react-dom', 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js')
                 ->loadedOnRequest(),
-            Js::make('react-wrapper-registry', $this->getAssetPath('components/ReactComponentRegistry.tsx'))
-                ->loadedOnRequest(),
-            Js::make('react-wrapper-renderer', $this->getAssetPath('components/UniversalReactRenderer.tsx'))
-                ->loadedOnRequest(),
-        ], 'react-wrapper');
+        ], 'react-dependencies');
+
+        // Register React Wrapper assets
+        if ($this->hasPrebuiltAssets()) {
+            // Use prebuilt assets (production)
+            FilamentAsset::register([
+                Js::make('react-wrapper', asset('vendor/react-wrapper/js/react-wrapper.js'))
+                    ->loadedOnRequest(),
+            ], 'react-wrapper');
+        } else {
+            // Use development assets (requires Vite)
+            FilamentAsset::register([
+                Js::make('react-wrapper-dev', $this->getAssetPath('index.tsx'))
+                    ->module()
+                    ->loadedOnRequest(),
+            ], 'react-wrapper');
+        }
+
+        // Register initialization script
+        $panel->renderHook(
+            'panels::body.end',
+            fn (): string => '<script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    if (window.ReactWrapper?.bootstrap) {
+                        window.ReactWrapper.bootstrap();
+                        console.log("React Wrapper initialized for Filament");
+                    }
+                });
+            </script>'
+        );
     }
 
     protected function getAssetPath(string $file): string
@@ -58,49 +78,24 @@ class FilamentReactWrapperPlugin implements Plugin
         return file_exists(resource_path('js/bootstrap-react.tsx'));
     }
 
-    protected function getViteAsset(string $entryPoint): string
+    protected function hasPrebuiltAssets(): bool
     {
-        // Check for Vite manifest in multiple possible locations
-        $manifestPaths = [
-            public_path('build/.vite/manifest.json'), // Laravel 12.x location
-            public_path('build/manifest.json'),       // Laravel 11.x location
-            public_path('build/assets/manifest.json'), // Alternative location
-        ];
-        
-        foreach ($manifestPaths as $manifestPath) {
-            if (file_exists($manifestPath)) {
-                $manifest = json_decode(file_get_contents($manifestPath), true);
-                
-                if (isset($manifest[$entryPoint]['file'])) {
-                    return asset('build/' . $manifest[$entryPoint]['file']);
-                }
-            }
-        }
-        
-        // Development fallback - try Vite dev server
-        if (app()->environment('local') && $this->isViteDevServerRunning()) {
-            return $this->getViteDevServerUrl() . '/' . $entryPoint;
-        }
-        
-        // Final fallback to source file
-        return asset($entryPoint);
+        return file_exists(public_path('vendor/react-wrapper/js/react-wrapper.js'));
     }
 
-    protected function isViteDevServerRunning(): bool
+    protected function isDevelopmentMode(): bool
     {
-        try {
-            $context = stream_context_create([
-                'http' => ['timeout' => 1]
-            ]);
-            return @file_get_contents('http://localhost:5173', false, $context) !== false;
-        } catch (\Exception $e) {
-            return false;
-        }
+        return app()->environment('local') && !$this->hasPrebuiltAssets();
     }
 
-    protected function getViteDevServerUrl(): string
+    public function getVersion(): string
     {
-        return config('react-wrapper.vite.dev_server_url', 'http://localhost:5173');
+        $composerPath = __DIR__.'/../composer.json';
+        if (file_exists($composerPath)) {
+            $composer = json_decode(file_get_contents($composerPath), true);
+            return $composer['version'] ?? '1.0.0';
+        }
+        return '1.0.0';
     }
 
     public static function make(): static

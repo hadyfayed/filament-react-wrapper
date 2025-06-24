@@ -1,17 +1,17 @@
-import React from 'react';
-import { universalReactRenderer } from './UniversalReactRenderer';
-import { 
-  IComponentRegistry, 
-  IComponentDefinition, 
-  IComponentConfig, 
-  IComponentMetadata, 
-  IComponentMiddleware, 
-  IComponentContext, 
+import React from "react";
+import { universalReactRenderer } from "./UniversalReactRenderer";
+import {
+  IComponentRegistry,
+  IComponentDefinition,
+  IComponentConfig,
+  IComponentMetadata,
+  IComponentMiddleware,
+  IComponentContext,
   IHookManager,
-  IEventSystem 
-} from '../interfaces/IComponentRegistry';
-import { EventSystem } from '../services/EventSystem';
-import { ComponentFactoryManager } from '../factories/ComponentFactory';
+  IEventSystem,
+} from "../interfaces/IComponentRegistry";
+import { EventSystem } from "../services/EventSystem";
+// import { ComponentFactoryManager } from "../factories/ComponentFactory";
 
 // Type aliases for backward compatibility
 export type ReactComponentDefinition = IComponentDefinition;
@@ -29,34 +29,44 @@ class ReactComponentRegistry implements IComponentRegistry {
   private events: IEventSystem = new EventSystem();
   private extensions: Map<string, any> = new Map();
   private middleware: Array<IComponentMiddleware> = [];
-  private componentFactory: ComponentFactoryManager = new ComponentFactoryManager();
+  // Component factory for future extensibility
+  // private componentFactory: ComponentFactoryManager =
+  //   new ComponentFactoryManager();
 
   /**
    * Register a React component with enhanced features
    */
   register(definition: ReactComponentDefinition): void {
     // Emit before registration event
-    this.events.emit('component:registering', { definition });
+    this.events.emit("component:registering", { definition });
 
     // Validate dependencies
     if (definition.config?.dependencies) {
       for (const dep of definition.config.dependencies) {
         if (!this.has(dep)) {
-          console.warn(`Component ${definition.name} depends on ${dep} which is not registered`);
+          console.warn(
+            `Component ${definition.name} depends on ${dep} which is not registered`,
+          );
         }
       }
     }
 
     // Handle dynamic imports for code splitting
-    const isAsyncImport = typeof definition.component === 'function' && 
-      !(definition.component.prototype && definition.component.prototype.isReactComponent);
-    
+    const isAsyncImport =
+      typeof definition.component === "function" &&
+      !(
+        definition.component.prototype &&
+        definition.component.prototype.isReactComponent
+      );
+
     let processedComponent = definition.component;
-    
+
     // Skip lazy loading for bundled components - all components are available synchronously
     // Only show warning if not explicitly marked as synchronous
     if (isAsyncImport && definition.isAsync !== false && !definition.isAsync) {
-      console.warn(`Component ${definition.name} appears to be an async import but lazy loading is disabled in bundled mode. Ensure all components are imported synchronously.`);
+      console.warn(
+        `Component ${definition.name} appears to be an async import but lazy loading is disabled in bundled mode. Ensure all components are imported synchronously.`,
+      );
       // Mark as processed to avoid re-processing
       definition.isAsync = true;
     }
@@ -69,13 +79,25 @@ class ReactComponentRegistry implements IComponentRegistry {
         config: definition.config || {},
         metadata: definition.metadata || {},
       };
-      
-      const result = middleware(processedComponent as React.ComponentType<any>, definition.defaultProps || {}, context);
-      if (result instanceof Promise) {
-        // Handle async middleware
-        result.then(comp => processedComponent = comp);
-      } else {
-        processedComponent = result;
+
+      try {
+        const result = middleware(
+          processedComponent as React.ComponentType<any>,
+          definition.defaultProps || {},
+          context,
+        );
+        if (result instanceof Promise) {
+          // Handle async middleware
+          result
+            .then((comp) => (processedComponent = comp))
+            .catch((error) => {
+              console.error(`Error in async middleware for ${definition.name}:`, error);
+            });
+        } else {
+          processedComponent = result;
+        }
+      } catch (error) {
+        console.error(`Error in middleware for ${definition.name}:`, error);
       }
     }
 
@@ -96,7 +118,9 @@ class ReactComponentRegistry implements IComponentRegistry {
     this.components.set(definition.name, processedDefinition);
 
     // Emit after registration event
-    this.events.emit('component:registered', { definition: processedDefinition });
+    this.events.emit("component:registered", {
+      definition: processedDefinition,
+    });
   }
 
   /**
@@ -106,7 +130,7 @@ class ReactComponentRegistry implements IComponentRegistry {
     const definition = this.components.get(name);
     if (definition) {
       // Emit component access event
-      this.events.emit('component:accessed', { name, definition });
+      this.events.emit("component:accessed", { name, definition });
     }
     return definition;
   }
@@ -114,7 +138,10 @@ class ReactComponentRegistry implements IComponentRegistry {
   /**
    * Create a component instance with processing
    */
-  create(name: string, props: Record<string, any> = {}): React.ComponentType<any> | null {
+  create(
+    name: string,
+    props: Record<string, any> = {},
+  ): React.ComponentType<any> | null {
     const definition = this.get(name);
     if (!definition) {
       console.error(`Component ${name} not found in registry`);
@@ -135,29 +162,45 @@ class ReactComponentRegistry implements IComponentRegistry {
           metadata: definition.metadata || {},
         };
         // Ensure component is a React component type before passing to middleware
-        if (typeof component === 'function' && 
-            !(component as any).then && 
-            (component.prototype?.isReactComponent || 
-             typeof component === 'function' && !component.prototype?.isReactComponent)) {
-          component = middleware(component as React.ComponentType<any>, mergedProps, context) as React.ComponentType<any>;
+        if (
+          typeof component === "function" &&
+          !(component as any).then &&
+          (component.prototype?.isReactComponent ||
+            (typeof component === "function" &&
+              !component.prototype?.isReactComponent))
+        ) {
+          component = middleware(
+            component as React.ComponentType<any>,
+            mergedProps,
+            context,
+          ) as React.ComponentType<any>;
         }
       }
     }
 
     // Emit component creation event
-    this.events.emit('component:created', { name, props: mergedProps, component });
+    this.events.emit("component:created", {
+      name,
+      props: mergedProps,
+      component,
+    });
 
     // Ensure we're returning a valid React component
-    if (typeof component === 'function' && 
-        !(component as any).then && 
-        (component.prototype?.isReactComponent || 
-         typeof component === 'function' && !component.prototype?.isReactComponent)) {
+    if (
+      typeof component === "function" &&
+      !(component as any).then &&
+      (component.prototype?.isReactComponent ||
+        (typeof component === "function" &&
+          !component.prototype?.isReactComponent))
+    ) {
       return component as React.ComponentType<any>;
     }
-    
+
     // If we somehow got a non-component, return a placeholder
     console.error(`Component ${name} is not a valid React component`);
-    return (() => <div>Invalid component: {name}</div>) as React.ComponentType<any>;
+    return (() => (
+      <div>Invalid component: {name}</div>
+    )) as React.ComponentType<any>;
   }
 
   /**
@@ -165,7 +208,7 @@ class ReactComponentRegistry implements IComponentRegistry {
    */
   registerExtension(name: string, extension: any): void {
     this.extensions.set(name, extension);
-    this.events.emit('extension:registered', { name, extension });
+    this.events.emit("extension:registered", { name, extension });
   }
 
   /**
@@ -188,11 +231,14 @@ class ReactComponentRegistry implements IComponentRegistry {
     }
 
     const filtered = new Map<string, ReactComponentDefinition>();
-    
+
     this.components.forEach((definition, name) => {
       let include = true;
 
-      if (filter.category && definition.metadata?.category !== filter.category) {
+      if (
+        filter.category &&
+        definition.metadata?.category !== filter.category
+      ) {
         include = false;
       }
 
@@ -224,9 +270,9 @@ class ReactComponentRegistry implements IComponentRegistry {
    */
   unregister(name: string): boolean {
     if (this.components.has(name)) {
-      this.events.emit('component:unregistering', { name });
+      this.events.emit("component:unregistering", { name });
       const result = this.components.delete(name);
-      this.events.emit('component:unregistered', { name });
+      this.events.emit("component:unregistered", { name });
       return result;
     }
     return false;
@@ -236,9 +282,9 @@ class ReactComponentRegistry implements IComponentRegistry {
    * Clear all registered components
    */
   clear(): void {
-    this.events.emit('registry:clearing');
+    this.events.emit("registry:clearing");
     this.components.clear();
-    this.events.emit('registry:cleared');
+    this.events.emit("registry:cleared");
   }
 
   /**
@@ -262,10 +308,11 @@ class ReactComponentRegistry implements IComponentRegistry {
       tagCounts: {} as Record<string, number>,
     };
 
-    this.components.forEach(definition => {
+    this.components.forEach((definition) => {
       // Count categories
-      const category = definition.metadata?.category || 'uncategorized';
-      stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
+      const category = definition.metadata?.category || "uncategorized";
+      stats.categoryCounts[category] =
+        (stats.categoryCounts[category] || 0) + 1;
 
       // Count tags
       if (definition.metadata?.tags) {
@@ -295,7 +342,11 @@ class ReactComponentRegistry implements IComponentRegistry {
   /**
    * Mount a component to a DOM container (for Blade template compatibility)
    */
-  mount(componentName: string, containerId: string, props: Record<string, any> = {}): void {
+  mount(
+    componentName: string,
+    containerId: string,
+    props: Record<string, any> = {},
+  ): void {
     try {
       universalReactRenderer.render({
         component: componentName,
@@ -304,7 +355,7 @@ class ReactComponentRegistry implements IComponentRegistry {
         onDataChange: props.onDataChange,
         onError: (error) => {
           console.error(`Error mounting component ${componentName}:`, error);
-        }
+        },
       });
     } catch (error) {
       console.error(`Failed to mount component ${componentName}:`, error);
@@ -344,14 +395,19 @@ class ReactComponentRegistry implements IComponentRegistry {
 export const componentRegistry = new ReactComponentRegistry();
 
 // Helper function to register multiple components at once
-export function registerComponents(definitions: ReactComponentDefinition[]): void {
-  definitions.forEach(definition => {
+export function registerComponents(
+  definitions: ReactComponentDefinition[],
+): void {
+  definitions.forEach((definition) => {
     componentRegistry.register(definition);
   });
 }
 
 // Extension helper
-export function createExtension(name: string, setup: (registry: ReactComponentRegistry) => void) {
+export function createExtension(
+  name: string,
+  setup: (registry: ReactComponentRegistry) => void,
+) {
   return {
     name,
     install: () => setup(componentRegistry),

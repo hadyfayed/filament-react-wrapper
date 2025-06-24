@@ -1,7 +1,7 @@
 // State persistence service for handling data sync between React and backend
 export interface StatePersistenceConfig {
   key: string;
-  storage?: 'localStorage' | 'sessionStorage' | 'none';
+  storage?: "localStorage" | "sessionStorage" | "none";
   syncWithLivewire?: boolean;
   livewirePath?: string;
   debounceMs?: number;
@@ -15,13 +15,19 @@ export class StatePersistenceService {
   private configs: Map<string, StatePersistenceConfig> = new Map();
   private debounceTimeouts: Map<string, number> = new Map();
   private lastValues: Map<string, any> = new Map();
+  private maxMapSize = 1000; // Prevent unbounded growth
 
   /**
    * Register a state path for persistence
    */
   register(config: StatePersistenceConfig): void {
+    // Prevent unbounded growth by cleaning up old entries
+    if (this.configs.size >= this.maxMapSize) {
+      this.cleanupOldEntries();
+    }
+
     this.configs.set(config.key, {
-      storage: 'localStorage',
+      storage: "localStorage",
       syncWithLivewire: false,
       debounceMs: 300,
       ...config,
@@ -122,8 +128,9 @@ export class StatePersistenceService {
     }
 
     // Clear from storage
-    if (config.storage !== 'none') {
-      const storage = config.storage === 'localStorage' ? localStorage : sessionStorage;
+    if (config.storage !== "none") {
+      const storage =
+        config.storage === "localStorage" ? localStorage : sessionStorage;
       storage.removeItem(key);
     }
 
@@ -141,16 +148,24 @@ export class StatePersistenceService {
   /**
    * Perform the actual save operation
    */
-  private performSave(key: string, value: any, config: StatePersistenceConfig): void {
+  private performSave(
+    key: string,
+    value: any,
+    config: StatePersistenceConfig,
+  ): void {
     try {
       // Transform data if transformer is provided
-      const serializedValue = config.transformer?.serialize 
+      const serializedValue = config.transformer?.serialize
         ? config.transformer.serialize(value)
         : value;
 
       // Save to storage
-      if (config.storage !== 'none') {
-        this.saveToStorage(key, serializedValue, config.storage as 'localStorage' | 'sessionStorage');
+      if (config.storage !== "none") {
+        this.saveToStorage(
+          key,
+          serializedValue,
+          config.storage as "localStorage" | "sessionStorage",
+        );
       }
 
       // Sync with Livewire
@@ -167,8 +182,13 @@ export class StatePersistenceService {
   /**
    * Save to browser storage
    */
-  private saveToStorage(key: string, value: any, storageType: 'localStorage' | 'sessionStorage'): void {
-    const storage = storageType === 'localStorage' ? localStorage : sessionStorage;
+  private saveToStorage(
+    key: string,
+    value: any,
+    storageType: "localStorage" | "sessionStorage",
+  ): void {
+    const storage =
+      storageType === "localStorage" ? localStorage : sessionStorage;
     try {
       storage.setItem(key, JSON.stringify(value));
     } catch (error) {
@@ -181,19 +201,20 @@ export class StatePersistenceService {
    */
   private loadFromStorage(key: string): any {
     const config = this.configs.get(key);
-    if (!config || config.storage === 'none') {
+    if (!config || config.storage === "none") {
       return null;
     }
 
-    const storage = config.storage === 'localStorage' ? localStorage : sessionStorage;
+    const storage =
+      config.storage === "localStorage" ? localStorage : sessionStorage;
     try {
       const stored = storage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
-        const value = config.transformer?.deserialize 
+        const value = config.transformer?.deserialize
           ? config.transformer.deserialize(parsed)
           : parsed;
-        
+
         this.lastValues.set(key, this.deepClone(value));
         return value;
       }
@@ -210,7 +231,7 @@ export class StatePersistenceService {
     if (window.workflowDataSync) {
       window.workflowDataSync(livewirePath, value);
     } else {
-      console.warn('workflowDataSync not available for Livewire sync');
+      console.warn("workflowDataSync not available for Livewire sync");
     }
   }
 
@@ -221,15 +242,15 @@ export class StatePersistenceService {
     if (a === b) return true;
     if (a == null || b == null) return a === b;
     if (typeof a !== typeof b) return false;
-    
-    if (typeof a === 'object') {
+
+    if (typeof a === "object") {
       if (Array.isArray(a) !== Array.isArray(b)) return false;
-      
+
       const keysA = Object.keys(a);
       const keysB = Object.keys(b);
-      
+
       if (keysA.length !== keysB.length) return false;
-      
+
       for (const key of keysA) {
         if (!keysB.includes(key) || !this.deepEqual(a[key], b[key])) {
           return false;
@@ -237,7 +258,7 @@ export class StatePersistenceService {
       }
       return true;
     }
-    
+
     return false;
   }
 
@@ -245,10 +266,10 @@ export class StatePersistenceService {
    * Deep clone object
    */
   private deepClone(obj: any): any {
-    if (obj === null || typeof obj !== 'object') return obj;
+    if (obj === null || typeof obj !== "object") return obj;
     if (obj instanceof Date) return new Date(obj);
-    if (Array.isArray(obj)) return obj.map(item => this.deepClone(item));
-    
+    if (Array.isArray(obj)) return obj.map((item) => this.deepClone(item));
+
     const cloned: any = {};
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
@@ -257,14 +278,42 @@ export class StatePersistenceService {
     }
     return cloned;
   }
+
+  /**
+   * Clean up old entries to prevent memory leaks
+   */
+  private cleanupOldEntries(): void {
+    // Clean up entries without active timeouts first
+    const keysToRemove: string[] = [];
+    
+    this.configs.forEach((_config, key) => {
+      if (!this.debounceTimeouts.has(key)) {
+        keysToRemove.push(key);
+      }
+    });
+
+    // Remove up to 100 old entries
+    keysToRemove.slice(0, 100).forEach(key => {
+      this.configs.delete(key);
+      this.lastValues.delete(key);
+    });
+
+    // If still too many, remove oldest 100 entries
+    if (this.configs.size >= this.maxMapSize) {
+      const allKeys = Array.from(this.configs.keys());
+      allKeys.slice(0, 100).forEach(key => {
+        this.unregister(key);
+      });
+    }
+  }
 }
 
 // Global instance
 export const statePersistenceService = new StatePersistenceService();
 
 // Auto-flush on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
     statePersistenceService.flush();
   });
 
@@ -273,21 +322,24 @@ if (typeof window !== 'undefined') {
 }
 
 // React hook for using state persistence
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 export function usePersistedState<T>(
   key: string,
   defaultValue: T,
-  config?: Partial<StatePersistenceConfig>
+  config?: Partial<StatePersistenceConfig>,
 ): [T, (value: T | ((prev: T) => T)) => void] {
   // Memoize the full config to prevent unnecessary re-renders
-  const fullConfig = useMemo<StatePersistenceConfig>(() => ({
-    key,
-    storage: 'localStorage',
-    syncWithLivewire: false,
-    debounceMs: 300,
-    ...config,
-  }), [key, config]);
+  const fullConfig = useMemo<StatePersistenceConfig>(
+    () => ({
+      key,
+      storage: "localStorage",
+      syncWithLivewire: false,
+      debounceMs: 300,
+      ...config,
+    }),
+    [key, config],
+  );
 
   // Register the key
   useEffect(() => {
@@ -300,30 +352,33 @@ export function usePersistedState<T>(
     const loaded = statePersistenceService.load(key);
     return loaded !== null ? loaded : defaultValue;
   }, [key, defaultValue]);
-  
+
   // Use state with memoized initial value
   const [value, setValue] = useState<T>(initialValue);
-  
+
   // Update state if initialValue changes (rare, but possible if defaultValue prop changes)
   useEffect(() => {
     setValue(initialValue);
   }, [initialValue]);
 
   // Memoized setter function to prevent unnecessary re-renders
-  const setter = useCallback((newValue: T | ((prev: T) => T)) => {
-    setValue(prevValue => {
-      const finalValue = typeof newValue === 'function' 
-        ? (newValue as (prev: T) => T)(prevValue)
-        : newValue;
-      
-      // Persist the value
-      statePersistenceService.save(key, finalValue);
-      
-      return finalValue;
-    });
-  }, [key]);
+  const setter = useCallback(
+    (newValue: T | ((prev: T) => T)) => {
+      setValue((prevValue) => {
+        const finalValue =
+          typeof newValue === "function"
+            ? (newValue as (prev: T) => T)(prevValue)
+            : newValue;
+
+        // Persist the value
+        statePersistenceService.save(key, finalValue);
+
+        return finalValue;
+      });
+    },
+    [key],
+  );
 
   // Return memoized value and setter
   return [value, setter];
 }
-

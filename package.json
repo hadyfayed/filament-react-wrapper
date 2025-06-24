@@ -3,17 +3,13 @@
   "version": "1.0.0",
   "description": "Universal React component integration system for Filament applications",
   "type": "module",
-  "main": "dist/core.es.js",
-  "module": "dist/core.es.js",
-  "types": "dist/core.d.ts",
+  "main": "dist/index.es.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/core.es.js",
-      "types": "./dist/core.d.ts"
-    },
-    "./bootstrap": {
-      "import": "./dist/bootstrap.es.js",
-      "types": "./dist/types/bootstrap.d.ts"
+      "import": "./dist/index.es.js",
+      "types": "./dist/index.d.ts"
     },
     "./package.json": "./package.json"
   },
@@ -25,6 +21,8 @@
   ],
   "scripts": {
     "build": "rimraf dist && vite build",
+    "build:laravel": "rimraf dist/laravel && vite build --config vite.laravel.config.js",
+    "build:all": "npm run build && npm run build:laravel",
     "dev": "vite build --watch",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
