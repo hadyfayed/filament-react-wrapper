@@ -22,6 +22,10 @@
     "es2021": true,
     "node": true
   },
+  "globals": {
+    "React": "readonly",
+    "NodeListOf": "readonly"
+  },
   "ignorePatterns": [
     "dist/",
     "node_modules/",

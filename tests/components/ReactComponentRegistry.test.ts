@@ -229,7 +229,7 @@ describe('ReactComponentRegistry', () => {
 
   describe('Middleware Support', () => {
     it('should apply global middleware to components', () => {
-      const middleware = vi.fn((component, props, context) => {
+      const middleware = vi.fn((component, _props, _context) => {
         return (componentProps: any) => React.createElement(component, componentProps);
       });
 
@@ -244,7 +244,7 @@ describe('ReactComponentRegistry', () => {
     });
 
     it('should apply component-specific middleware', () => {
-      const componentMiddleware = vi.fn((component, props, context) => {
+      const componentMiddleware = vi.fn((component, _props, _context) => {
         return (componentProps: any) => React.createElement(component, componentProps);
       });
 
