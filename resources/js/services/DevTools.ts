@@ -49,7 +49,7 @@ class DevTools {
     return (
       typeof window !== 'undefined' &&
       (
-        process.env.NODE_ENV === 'development' ||
+        (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') ||
         window.location.hostname === 'localhost' ||
         window.location.search.includes('react-wrapper-debug=true') ||
         localStorage.getItem('react-wrapper-debug') === 'true'
