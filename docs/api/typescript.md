@@ -48,13 +48,13 @@ interface IComponentRegistry {
   unregister(name: string): boolean;
   clear(): void;
   getComponentNames(): string[];
-  getStats(): ComponentStats;
+  getStats(): {
+    totalComponents: number;
+    categoryCounts: Record<string, number>;
+    tagCounts: Record<string, number>;
+  };
   mount(componentName: string, containerId: string, props?: Record<string, any>): void;
   unmount(containerId: string): void;
-  scanAndMount(container?: Element): void;
-  on(event: string, callback: Function, priority?: number): void;
-  off(event: string, callback: Function): void;
-  addMiddleware(middleware: MiddlewareFunction): void;
 }
 ```
 
@@ -64,55 +64,66 @@ interface IComponentRegistry {
 interface IComponentDefinition {
   name: string;
   component: React.ComponentType<any> | (() => Promise<{ default: React.ComponentType<any> }>);
-  defaultProps?: Record<string, any>;
   isAsync?: boolean;
-  config?: ComponentConfig;
-  metadata?: ComponentMetadata;
-  hooks?: ComponentHooks;
+  defaultProps?: Record<string, any>;
+  propTypes?: Record<string, any>;
+  config?: IComponentConfig;
+  metadata?: IComponentMetadata;
 }
 ```
 
-### Interface: `ComponentConfig`
+### Interface: `IComponentConfig`
 
 ```typescript
-interface ComponentConfig {
+interface IComponentConfig {
   lazy?: boolean;
   cache?: boolean;
+  ssr?: boolean;
   preload?: boolean;
-  middleware?: MiddlewareFunction[];
-  onError?: (error: Error, componentName: string) => void;
-  fallback?: React.ComponentType<any>;
+  wrapper?: string | React.ComponentType<any>;
+  middleware?: Array<IComponentMiddleware>;
+  dependencies?: string[];
+  version?: string;
 }
 ```
 
-### Interface: `ComponentMetadata`
+### Interface: `IComponentMetadata`
 
 ```typescript
-interface ComponentMetadata {
-  category?: string;
-  subcategory?: string;
+interface IComponentMetadata {
   description?: string;
+  category?: string;
   tags?: string[];
   author?: string;
-  version?: string;
-  documentation?: string;
-  examples?: string[];
-  [key: string]: any;
+  docs?: string;
+  examples?: Array<{
+    name: string;
+    props: Record<string, any>;
+    description?: string;
+  }>;
 }
 ```
 
-### Type: `MiddlewareFunction`
+### Type: `IComponentMiddleware`
 
 ```typescript
-type MiddlewareFunction = (
+type IComponentMiddleware = (
   component: React.ComponentType<any>,
   props: Record<string, any>,
-  context: MiddlewareContext
-) => React.ComponentType<any>;
+  context: IComponentContext,
+) => React.ComponentType<any> | Promise<React.ComponentType<any>>;
 
-interface MiddlewareContext {
-  metadata: ComponentMetadata;
-  config: ComponentConfig;
+interface IComponentContext {
+  registry: IComponentRegistry;
+  hooks: IHookManager;
+  config: IComponentConfig;
+  metadata: IComponentMetadata;
+}
+
+interface IHookManager {
+  addHook(event: string, callback: Function, priority?: number): void;
+  removeHook(event: string, callback: Function): void;
+  executeHooks(event: string, data?: any): any;
 }
 ```
 
@@ -300,66 +311,14 @@ function App() {
 
 ## 🛠️ Developer Tools API
 
-### Interface: `DevToolsAPI`
+### Interface: `IDevTools`
 
 ```typescript
-interface DevToolsAPI {
+interface IDevTools {
   enable(): void;
   disable(): void;
-  clear(): void;
-  trackComponentMount(name: string, props: Record<string, any>): void;
-  trackComponentRender(name: string, props: Record<string, any>): void;
-  trackComponentUnmount(name: string): void;
-  trackComponentError(name: string, error: Error): void;
-  trackComponentWarning(name: string, warning: string): void;
-  trackStateChange(path: string, oldValue: any, newValue: any, source?: string): void;
-  recordPerformanceMetric(metric: PerformanceMetrics): void;
-  startPerformanceMeasure(name: string): void;
-  endPerformanceMeasure(name: string): void;
-  getComponentInfo(name?: string): ComponentInfo | ComponentInfo[] | undefined;
-  getPerformanceMetrics(componentName?: string): PerformanceMetrics[];
-  getStateHistory(path?: string): StateChange[];
-  showDebugPanel(): void;
-  logComponentInfo(): void;
-  logStateInfo(): void;
-  logPerformanceInfo(): void;
-  subscribe(callback: (event: DevToolsEvent) => void): () => void;
-  getMemoryUsage(): number | undefined;
-}
-```
-
-### Types
-
-```typescript
-interface ComponentInfo {
-  name: string;
-  props: Record<string, any>;
-  mountTime: number;
-  renderCount: number;
-  lastRenderTime: number;
-  errors: Error[];
-  warnings: string[];
-}
-
-interface PerformanceMetrics {
-  componentName: string;
-  mountTime: number;
-  renderTime: number;
-  propsChanges: number;
-  memoryUsage?: number;
-}
-
-interface StateChange {
-  path: string;
-  oldValue: any;
-  newValue: any;
-  timestamp: number;
-  source: string;
-}
-
-interface DevToolsEvent {
-  type: string;
-  data: any;
+  isEnabled(): boolean;
+  log(message: string, data?: unknown): void;
 }
 ```
 
@@ -369,266 +328,113 @@ interface DevToolsEvent {
 // Enable debug mode
 devTools.enable();
 
-// Track component performance
-devTools.startPerformanceMeasure('MyComponent');
-// ... component rendering
-devTools.endPerformanceMeasure('MyComponent');
+// Check if enabled
+if (devTools.isEnabled()) {
+  devTools.log('Component rendered', { componentName: 'MyComponent' });
+}
 
-// Subscribe to events
-const unsubscribe = devTools.subscribe((event) => {
-  console.log('DevTools event:', event);
-});
-
-// Show debug panel
-devTools.showDebugPanel(); // or press Ctrl+Shift+W
+// Disable debug mode
+devTools.disable();
 ```
 
 ## ⚡ Code Splitting API
 
-### Interface: `CodeSplittingAPI`
+### Interface: `ICodeSplittingService`
 
 ```typescript
-interface CodeSplittingAPI {
-  registerStrategy(strategy: SplitStrategy): void;
-  addPrefetchRule(rule: PrefetchRule): void;
-  loadComponent(componentName: string, metadata?: any, forceStrategy?: string): Promise<any>;
-  preloadComponents(components: string[], priority?: ChunkPriority): void;
-  analyzeBundles(): BundleAnalysis;
-  clearCache(): void;
-  getChunkInfo(componentName?: string): ChunkInfo | ChunkInfo[] | null;
-}
-```
-
-### Types
-
-```typescript
-interface SplitStrategy {
-  name: string;
-  condition: (componentName: string, metadata?: any) => boolean;
-  chunkName: (componentName: string) => string;
-  preload?: boolean;
-  priority?: ChunkPriority;
-}
-
-interface PrefetchRule {
-  trigger: string;
-  prefetch: string[];
-  delay?: number;
-  condition?: () => boolean;
-}
-
-enum ChunkPriority {
-  CRITICAL = 1,
-  HIGH = 2,
-  MEDIUM = 3,
-  LOW = 4,
-  BACKGROUND = 5
-}
-
-interface ChunkInfo {
-  id: string;
-  name: string;
-  size: number;
-  loadTime: number;
-  dependencies: string[];
-  priority: ChunkPriority;
-  lastAccessed: number;
-  hitCount: number;
-}
-
-interface BundleAnalysis {
-  totalChunks: number;
-  totalSize: number;
-  averageLoadTime: number;
-  cacheHitRate: number;
-  mostUsedChunks: ChunkInfo[];
-  leastUsedChunks: ChunkInfo[];
-  recommendations: BundleRecommendation[];
+interface ICodeSplittingService {
+  loadComponent(name: string): Promise<React.ComponentType<Record<string, unknown>>>;
+  preloadComponent(name: string): Promise<void>;
+  isLoaded(name: string): boolean;
 }
 ```
 
 **Usage:**
 
 ```typescript
-// Register custom splitting strategy
-codeSplittingService.registerStrategy({
-  name: 'admin-strategy',
-  condition: (name, metadata) => metadata?.category === 'admin',
-  chunkName: (name) => `admin-${name.toLowerCase()}`,
-  priority: ChunkPriority.MEDIUM
-});
+// Load component dynamically
+const component = await codeSplittingService.loadComponent('AdminPanel');
 
-// Add prefetch rule
-codeSplittingService.addPrefetchRule({
-  trigger: 'Dashboard',
-  prefetch: ['UserProfile', 'Analytics'],
-  delay: 1000
-});
+// Preload component for faster access
+await codeSplittingService.preloadComponent('UserProfile');
 
-// Load component with strategy
-const component = await codeSplittingService.loadComponent(
-  'AdminPanel',
-  { category: 'admin' }
-);
+// Check if component is loaded
+if (codeSplittingService.isLoaded('Dashboard')) {
+  console.log('Dashboard is ready');
+}
 ```
 
 ## 🔄 Component Versioning API
 
-### Interface: `ComponentVersioningAPI`
+### Interface: `IVersioningService`
 
 ```typescript
-interface ComponentVersioningAPI {
-  registerVersion(componentName: string, version: string, component: any, metadata?: Partial<ComponentMetadata>): void;
-  getVersion(componentName: string, version?: string): ComponentVersion | null;
-  getAllVersions(componentName: string): ComponentVersion[];
-  getLatestVersion(componentName: string): ComponentVersion | null;
-  hasVersion(componentName: string, version?: string): boolean;
-  registerAlias(componentName: string, alias: string, version: string): void;
-  deprecateVersion(componentName: string, version: string, message?: string, migrationPath?: string): void;
-  addMigration(componentName: string, fromVersion: string, toVersion: string, migrationFn: MigrationFunction): void;
-  migrateProps(componentName: string, fromVersion: string, toVersion: string, props: Record<string, any>): Promise<MigrationResult>;
-  checkCompatibility(componentName: string, fromVersion: string, toVersion: string): CompatibilityCheck;
-  satisfiesConstraint(version: string, constraint: VersionConstraint): boolean;
-  findBestVersion(componentName: string, constraint: VersionConstraint): string | null;
-  addCompatibilityRule(componentName: string, rule: CompatibilityRule): void;
-  getChangelog(componentName: string): ChangelogEntry[];
-  getVersionStats(componentName?: string): any;
+interface IVersioningService {
+  getVersion(componentName: string): string | undefined;
+  setVersion(componentName: string, version: string): void;
+  isCompatible(componentName: string, requiredVersion: string): boolean;
 }
-```
-
-### Types
-
-```typescript
-interface ComponentVersion {
-  version: string;
-  component: any;
-  metadata: ComponentMetadata;
-  deprecated?: boolean;
-  deprecationMessage?: string;
-  migrationPath?: string;
-  breakingChanges?: BreakingChange[];
-  dependencies?: ComponentDependency[];
-}
-
-interface MigrationResult {
-  success: boolean;
-  fromVersion: string;
-  toVersion: string;
-  migratedProps: Record<string, any>;
-  warnings: string[];
-  errors: string[];
-  manualStepsRequired: boolean;
-}
-
-interface CompatibilityCheck {
-  compatible: boolean;
-  issues: CompatibilityIssue[];
-  recommendations: string[];
-  autoMigrationAvailable: boolean;
-}
-
-interface VersionConstraint {
-  min?: string;
-  max?: string;
-  exact?: string;
-  exclude?: string[];
-}
-
-type MigrationFunction = (
-  props: Record<string, any>,
-  context: {
-    componentName: string;
-    fromVersion: string;
-    toVersion: string;
-  }
-) => Promise<{
-  props: Record<string, any>;
-  warnings?: string[];
-  manualStepsRequired?: boolean;
-}>;
 ```
 
 **Usage:**
 
 ```typescript
-// Register version
-componentVersioningService.registerVersion(
-  'UserCard',
-  '2.0.0',
-  UserCardV2,
-  {
-    description: 'Enhanced user card with dark mode',
-    changelog: [{
-      version: '2.0.0',
-      changes: ['Added dark mode support', 'Improved accessibility']
-    }]
-  }
-);
+// Set component version
+componentVersioningService.setVersion('UserCard', '2.1.0');
 
-// Add migration
-componentVersioningService.addMigration(
-  'UserCard',
-  '1.0.0',
-  '2.0.0',
-  async (props, context) => {
-    return {
-      props: {
-        ...props,
-        theme: props.darkMode ? 'dark' : 'light' // Convert old prop
-      },
-      warnings: ['darkMode prop renamed to theme']
-    };
-  }
-);
+// Get component version
+const version = componentVersioningService.getVersion('UserCard');
+console.log('UserCard version:', version);
 
-// Migrate props
-const migrationResult = await componentVersioningService.migrateProps(
-  'UserCard',
-  '1.0.0',
-  '2.0.0',
-  { name: 'John', darkMode: true }
-);
+// Check compatibility
+const isCompatible = componentVersioningService.isCompatible('UserCard', '2.0.0');
+if (!isCompatible) {
+  console.warn('UserCard version incompatible with required version');
+}
 ```
 
 ## 🎭 Universal Renderer API
 
-### Interface: `UniversalRendererAPI`
+### Interface: `IUniversalRenderer`
 
 ```typescript
-interface UniversalRendererAPI {
-  mount(componentName: string, containerId: string, props?: Record<string, any>): void | Promise<void>;
+interface IUniversalRenderer {
+  render(options: {
+    component: string;
+    props?: Record<string, unknown>;
+    statePath?: string;
+    containerId: string;
+    onDataChange?: (data: unknown) => void;
+    onError?: (error: Error) => void;
+  }): void;
   unmount(containerId: string): void;
-  unmountAll(): void;
-  scanAndMount(container?: Element): void;
-  getActiveContainers(): string[];
-  isMounted(containerId: string): boolean;
-  batchMount(mounts: Array<{ component: string; container: string; props?: Record<string, any> }>): void;
+  isRendered(containerId: string): boolean;
 }
 ```
 
 **Usage:**
 
 ```typescript
-// Mount single component
-universalReactRenderer.mount('UserCard', 'user-container', {
-  userId: 123,
-  editable: true
+// Render single component
+universalReactRenderer.render({
+  component: 'UserCard',
+  containerId: 'user-container',
+  props: {
+    userId: 123,
+    editable: true
+  },
+  statePath: 'user.profile',
+  onDataChange: (data) => console.log('Data changed:', data),
+  onError: (error) => console.error('Render error:', error)
 });
 
-// Batch mount multiple components
-universalReactRenderer.batchMount([
-  { component: 'Header', container: 'header' },
-  { component: 'Sidebar', container: 'sidebar' },
-  { component: 'Footer', container: 'footer' }
-]);
-
-// Auto-discover and mount
-universalReactRenderer.scanAndMount();
-
-// Check if mounted
-if (universalReactRenderer.isMounted('user-container')) {
-  console.log('Component is mounted');
+// Check if rendered
+if (universalReactRenderer.isRendered('user-container')) {
+  console.log('Component is rendered');
 }
+
+// Unmount component
+universalReactRenderer.unmount('user-container');
 ```
 
 ## 🎯 Utility Functions
@@ -692,6 +498,319 @@ window.ReactWrapper.devTools.showDebugPanel();
 window.ReactComponentRegistry.register({ name: 'Test', component: TestComponent });
 ```
 
+## 🐘 PHP/Laravel API
+
+### ReactComponentRegistry Service
+
+```php
+<?php
+
+namespace HadyFayed\ReactWrapper\Services;
+
+interface ReactRegistryInterface
+{
+    public function register(string $name, string $component, array $config = []): void;
+    public function get(string $name): ?array;
+    public function has(string $name): bool;
+    public function all(): array;
+    public function count(): int;
+    public function unregister(string $name): void;
+    public function registerMany(array $components): void;
+    public function addHook(string $event, callable $callback, int $priority = 10): void;
+    public function executeHooks(string $event, mixed $data = null): mixed;
+    public function registerExtension(string $name, array $config): void;
+}
+```
+
+**Usage:**
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Services\ReactComponentRegistry;
+
+$registry = app(ReactComponentRegistry::class);
+
+// Register a component
+$registry->register('UserCard', 'UserCard', [
+    'lazy' => true,
+    'cache' => true,
+    'props' => ['showAvatar' => true],
+    'defaultProps' => ['theme' => 'light']
+]);
+
+// Register multiple components
+$registry->registerMany([
+    'ProductCard' => [
+        'component' => 'ProductCard',
+        'config' => ['lazy' => false]
+    ],
+    'OrderSummary' => [
+        'component' => 'OrderSummary',
+        'config' => ['cache' => true]
+    ]
+]);
+
+// Check if component exists
+if ($registry->has('UserCard')) {
+    $component = $registry->get('UserCard');
+}
+
+// Get all registered components
+$allComponents = $registry->all();
+$componentCount = $registry->count();
+```
+
+### ReactField Form Component
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Forms\Components\ReactField;
+
+// Basic usage
+ReactField::make('user_profile')
+    ->component('UserProfileEditor')
+    ->props(['allowImageUpload' => true])
+    ->height(400)
+    ->reactive()
+    ->lazy();
+
+// Advanced configuration
+ReactField::make('workflow_canvas')
+    ->component('WorkflowCanvas')
+    ->props([
+        'nodes' => $this->getNodes(),
+        'connections' => $this->getConnections()
+    ])
+    ->height(600)
+    ->resizable()
+    ->fullscreen()
+    ->toolbar(['save', 'export', 'import'])
+    ->dependencies(['WorkflowNode', 'WorkflowConnection'])
+    ->validationRules(['required', 'array'])
+    ->reactive(false) // Disable real-time updates for performance
+    ->afterStateUpdated(function ($state) {
+        // Handle state changes
+        $this->saveWorkflow($state);
+    });
+```
+
+### ReactWidget
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Widgets\ReactWidget;
+
+class AnalyticsWidget extends ReactWidget
+{
+    protected string $componentName = 'AnalyticsChart';
+    
+    public function component(string $componentName): static
+    {
+        return static::make()->component($componentName);
+    }
+    
+    public function getData(): array
+    {
+        return [
+            'metrics' => $this->getMetrics(),
+            'timeRange' => $this->getTimeRange(),
+            'filters' => $this->getFilters()
+        ];
+    }
+    
+    protected function getMetrics(): array
+    {
+        // Return your metrics data
+        return [
+            'visitors' => 12543,
+            'pageViews' => 45678,
+            'bounceRate' => 0.34
+        ];
+    }
+}
+
+// Usage
+AnalyticsWidget::make()
+    ->component('DashboardChart')
+    ->props(['type' => 'line'])
+    ->height(400)
+    ->polling(30) // Poll every 30 seconds
+    ->reactive()
+    ->theme('dark')
+    ->filters(['dateRange', 'userType']);
+```
+
+### AssetManager Service
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Services\AssetManager;
+
+$assetManager = app(AssetManager::class);
+
+// Check if Vite dev server is running
+if ($assetManager->isViteDevServerRunning()) {
+    // Development mode
+    $scriptUrl = $assetManager->getAssetUrl('resources/js/app.tsx');
+} else {
+    // Production mode
+    $manifest = $assetManager->getViteManifest();
+}
+
+// Register component assets
+$assetManager->registerComponentAsset('UserCard', [
+    'js' => 'resources/js/components/UserCard.tsx',
+    'css' => 'resources/css/components/user-card.css',
+    'dependencies' => ['Button', 'Avatar'],
+    'lazy' => true,
+    'preload' => false
+]);
+
+// Generate lazy loading script
+$components = ['UserCard', 'ProductList', 'OrderForm'];
+$lazyLoadScript = $assetManager->generateLazyLoadScript($components);
+
+// Preload critical components
+$preloadTags = $assetManager->generatePreloadTags(['Header', 'Navigation']);
+```
+
+### VariableShareService
+
+```php
+<?php
+
+use HadyFayed\ReactWrapper\Services\VariableShareService;
+
+$variableShare = app(VariableShareService::class);
+
+// Share data to all components
+$variableShare->share('user', auth()->user());
+$variableShare->share('config', config('app'));
+
+// Share data to specific component
+$variableShare->shareToComponent('UserCard', 'profile', [
+    'avatar' => $user->avatar,
+    'preferences' => $user->preferences
+]);
+
+// Share Livewire data
+$variableShare->shareLivewireData();
+
+// Get shared data
+$userData = $variableShare->get('user');
+$allShared = $variableShare->all();
+```
+
+### Service Provider Configuration
+
+```php
+<?php
+
+// config/react-wrapper.php
+return [
+    'debug' => env('REACT_WRAPPER_DEBUG', false),
+    'cache_components' => env('REACT_WRAPPER_CACHE', true),
+    'preload_components' => env('REACT_WRAPPER_PRELOAD', false),
+    
+    'vite' => [
+        'dev_server_url' => env('VITE_DEV_SERVER_URL', 'http://localhost:5173'),
+        'manifest_paths' => [
+            'build/.vite/manifest.json',
+            'build/manifest.json',
+        ],
+        'auto_detect_dev_server' => true,
+    ],
+    
+    'assets' => [
+        'base_url' => '/build',
+        'preload' => [
+            'components' => true,
+            'critical_css' => true,
+        ],
+    ],
+    
+    'registry' => [
+        'auto_discovery' => [
+            'enabled' => true,
+            'paths' => [
+                'resources/js/components',
+                'resources/js/widgets'
+            ],
+            'patterns' => ['*.tsx', '*.jsx']
+        ],
+        'cache' => [
+            'enabled' => true,
+            'ttl' => 3600,
+        ],
+    ],
+    
+    'integrations' => [
+        'filament' => [
+            'enabled' => true,
+            'auto_register_fields' => true,
+            'auto_register_widgets' => true,
+        ],
+        'livewire' => [
+            'enabled' => true,
+            'sync_state' => true,
+        ],
+    ],
+];
+```
+
+### Artisan Commands
+
+```bash
+# Create a new React component with registration
+php artisan make:react-component UserDashboard --register
+
+# Register an existing component
+php artisan react:register ProductCard --path=resources/js/components/ProductCard.tsx
+
+# Scan and register components from directory
+php artisan react:scan resources/js/components --register
+
+# List all registered components
+php artisan react:list
+
+# Show integration report
+php artisan react-wrapper:integration-report
+
+# Clear component registry cache
+php artisan react:clear
+
+# Generate component registration file
+php artisan react:export --output=bootstrap-components.php
+```
+
+### Event Listeners
+
+```php
+<?php
+
+use Illuminate\Support\Facades\Event;
+use HadyFayed\ReactWrapper\Events\ComponentRegistered;
+
+// Listen for component registration
+Event::listen('react-wrapper.component.registered', function ($name, $component, $config) {
+    logger()->info("Component registered: {$name}");
+});
+
+// Listen for Filament integration
+Event::listen('react-wrapper.filament.integrated', function () {
+    logger()->info('Filament integration completed');
+});
+
+// Listen for component discovery
+Event::listen('react-wrapper.components.discovered', function ($path, $count) {
+    logger()->info("Discovered {$count} components in {$path}");
+});
+```
+
 ---
 
-**Complete TypeScript API for building type-safe React components! 🚀**
+**Complete TypeScript and PHP API for building type-safe React components! 🚀**
