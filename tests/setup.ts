@@ -46,7 +46,7 @@ beforeEach(() => {
   
   // Reset window.ReactWrapper if it exists
   if (typeof window !== 'undefined') {
-    delete (window as any).ReactWrapper;
-    delete (window as any).ReactComponentRegistry;
+    delete (window as Record<string, unknown>).ReactWrapper;
+    delete (window as Record<string, unknown>).ReactComponentRegistry;
   }
 });

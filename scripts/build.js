@@ -138,7 +138,7 @@ class BuildManager {
   async cleanBuildDirectory() {
     this.log('Cleaning build directory...');
     
-    const buildDirs = ['dist', 'storybook-static'];
+    const buildDirs = ['dist'];
     
     for (const dir of buildDirs) {
       if (fs.existsSync(dir)) {
@@ -206,11 +206,6 @@ export default defineConfig({
     }
   }
 
-  async buildStorybook() {
-    this.log('Building Storybook...');
-    this.exec('npm run build-storybook');
-    this.log('Storybook build completed', 'success');
-  }
 
   async generateTypes() {
     this.log('Generating TypeScript declarations...');
@@ -364,9 +359,6 @@ export default defineConfig({
         await this.buildUMD();
       }
 
-      if (this.buildTarget === 'all' || this.buildTarget === 'storybook') {
-        await this.buildStorybook();
-      }
 
       await this.generateTypes();
       await this.optimizeBuild();

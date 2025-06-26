@@ -6,15 +6,15 @@ export interface StatePersistenceConfig {
   livewirePath?: string;
   debounceMs?: number;
   transformer?: {
-    serialize?: (data: any) => any;
-    deserialize?: (data: any) => any;
+    serialize?: (data: unknown) => unknown;
+    deserialize?: (data: unknown) => unknown;
   };
 }
 
 export class StatePersistenceService {
   private configs: Map<string, StatePersistenceConfig> = new Map();
   private debounceTimeouts: Map<string, number> = new Map();
-  private lastValues: Map<string, any> = new Map();
+  private lastValues: Map<string, unknown> = new Map();
   private maxMapSize = 1000; // Prevent unbounded growth
 
   /**
@@ -40,7 +40,7 @@ export class StatePersistenceService {
   /**
    * Save state value with persistence and sync
    */
-  save(key: string, value: any): void {
+  async save(key: string, value: unknown): Promise<void> {
     const config = this.configs.get(key);
     if (!config) {
       console.warn(`State persistence config not found for key: ${key}`);
@@ -62,8 +62,8 @@ export class StatePersistenceService {
     }
 
     // Debounce the save operation
-    const timeout = setTimeout(() => {
-      this.performSave(key, value, config);
+    const timeout = setTimeout(async () => {
+      await this.performSave(key, value, config);
       this.debounceTimeouts.delete(key);
     }, config.debounceMs);
 
@@ -73,13 +73,13 @@ export class StatePersistenceService {
   /**
    * Load state value from storage
    */
-  load(key: string): any {
+  async load(key: string): Promise<unknown> {
     const config = this.configs.get(key);
     if (!config) {
       return null;
     }
 
-    return this.loadFromStorage(key);
+    return Promise.resolve(this.loadFromStorage(key));
   }
 
   /**
@@ -119,9 +119,35 @@ export class StatePersistenceService {
   }
 
   /**
-   * Clear all stored data for a key
+   * Remove stored data for a key (alias for clear)
    */
-  clear(key: string): void {
+  async remove(key: string): Promise<void> {
+    this.clearSync(key);
+  }
+
+  /**
+   * Clear all stored data
+   */
+  async clear(): Promise<void> {
+    // Clear all configs
+    this.configs.clear();
+    this.lastValues.clear();
+    
+    // Clear all timeouts
+    this.debounceTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.debounceTimeouts.clear();
+    
+    // Clear localStorage and sessionStorage
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+  }
+
+  /**
+   * Clear stored data for a specific key
+   */
+  private clearSync(key: string): void {
     const config = this.configs.get(key);
     if (!config) {
       return;
@@ -148,11 +174,11 @@ export class StatePersistenceService {
   /**
    * Perform the actual save operation
    */
-  private performSave(
+  private async performSave(
     key: string,
-    value: any,
+    value: unknown,
     config: StatePersistenceConfig,
-  ): void {
+  ): Promise<void> {
     try {
       // Transform data if transformer is provided
       const serializedValue = config.transformer?.serialize
@@ -184,7 +210,7 @@ export class StatePersistenceService {
    */
   private saveToStorage(
     key: string,
-    value: any,
+    value: unknown,
     storageType: "localStorage" | "sessionStorage",
   ): void {
     const storage =
@@ -199,7 +225,7 @@ export class StatePersistenceService {
   /**
    * Load from browser storage
    */
-  private loadFromStorage(key: string): any {
+  private loadFromStorage(key: string): unknown {
     const config = this.configs.get(key);
     if (!config || config.storage === "none") {
       return null;
@@ -227,7 +253,7 @@ export class StatePersistenceService {
   /**
    * Sync with Livewire component
    */
-  private syncWithLivewire(livewirePath: string, value: any): void {
+  private syncWithLivewire(livewirePath: string, value: unknown): void {
     if (window.workflowDataSync) {
       window.workflowDataSync(livewirePath, value);
     } else {
@@ -238,7 +264,7 @@ export class StatePersistenceService {
   /**
    * Deep equality check
    */
-  private deepEqual(a: any, b: any): boolean {
+  private deepEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
     if (a == null || b == null) return a === b;
     if (typeof a !== typeof b) return false;
@@ -252,7 +278,7 @@ export class StatePersistenceService {
       if (keysA.length !== keysB.length) return false;
 
       for (const key of keysA) {
-        if (!keysB.includes(key) || !this.deepEqual(a[key], b[key])) {
+        if (!keysB.includes(key) || !this.deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
           return false;
         }
       }
@@ -265,15 +291,15 @@ export class StatePersistenceService {
   /**
    * Deep clone object
    */
-  private deepClone(obj: any): any {
+  private deepClone(obj: unknown): unknown {
     if (obj === null || typeof obj !== "object") return obj;
     if (obj instanceof Date) return new Date(obj);
     if (Array.isArray(obj)) return obj.map((item) => this.deepClone(item));
 
-    const cloned: any = {};
+    const cloned: Record<string, unknown> = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        cloned[key] = this.deepClone(obj[key]);
+        cloned[key] = this.deepClone((obj as Record<string, unknown>)[key]);
       }
     }
     return cloned;
@@ -318,7 +344,7 @@ if (typeof window !== "undefined") {
   });
 
   // Make available globally for debugging
-  (window as any).statePersistenceService = statePersistenceService;
+  (window as unknown as Record<string, unknown>).statePersistenceService = statePersistenceService;
 }
 
 // React hook for using state persistence
@@ -349,17 +375,34 @@ export function usePersistedState<T>(
 
   // Load initial value with memoization
   const initialValue = useMemo(() => {
-    const loaded = statePersistenceService.load(key);
-    return loaded !== null ? loaded : defaultValue;
-  }, [key, defaultValue]);
+    // Since load is now async, we'll start with defaultValue and update in useEffect
+    return defaultValue ?? ({} as T);
+  }, [defaultValue]);
 
   // Use state with memoized initial value
-  const [value, setValue] = useState<T>(initialValue);
+  const [value, setValue] = useState<T>(() => initialValue);
 
-  // Update state if initialValue changes (rare, but possible if defaultValue prop changes)
+  // Load persisted value on mount
   useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
+    let mounted = true;
+    
+    const loadPersistedValue = async () => {
+      try {
+        const loaded = await statePersistenceService.load(key);
+        if (mounted && loaded !== null) {
+          setValue(loaded as T);
+        }
+      } catch (error) {
+        console.error('Error loading persisted state:', error);
+      }
+    };
+    
+    loadPersistedValue();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [key]);
 
   // Memoized setter function to prevent unnecessary re-renders
   const setter = useCallback(
@@ -370,8 +413,10 @@ export function usePersistedState<T>(
             ? (newValue as (prev: T) => T)(prevValue)
             : newValue;
 
-        // Persist the value
-        statePersistenceService.save(key, finalValue);
+        // Persist the value (fire and forget)
+        statePersistenceService.save(key, finalValue).catch(error => {
+          console.error('Error persisting state:', error);
+        });
 
         return finalValue;
       });

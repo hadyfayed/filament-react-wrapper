@@ -12,15 +12,15 @@ import {
 
 export abstract class BaseStateManager implements IStateManager {
   protected state: IStateManagerState = {};
-  protected subscribers: Map<string, Set<(value: any) => void>> = new Map();
+  protected subscribers: Map<string, Set<(value: unknown) => void>> = new Map();
 
-  abstract setState(path: string, value: any): void;
-  abstract updateState(path: string, updater: (current: any) => any): void;
-  abstract getState(path: string): any;
+  abstract setState(path: string, value: unknown): void;
+  abstract updateState(path: string, updater: (current: unknown) => unknown): void;
+  abstract getState(path: string): unknown;
   abstract resetState(newState?: IStateManagerState): void;
-  abstract batchUpdate(updates: Array<{ path: string; value: any }>): void;
+  abstract batchUpdate(updates: Array<{ path: string; value: unknown }>): void;
 
-  subscribe(path: string, callback: (value: any) => void): () => void {
+  subscribe(path: string, callback: (value: unknown) => void): () => void {
     if (!this.subscribers.has(path)) {
       this.subscribers.set(path, new Set());
     }
@@ -48,8 +48,8 @@ export abstract class BaseStateManager implements IStateManager {
     };
   }
 
-  protected getNestedValue<T = any>(
-    obj: Record<string, any>,
+  protected getNestedValue<T = unknown>(
+    obj: Record<string, unknown>,
     path: string,
   ): T | undefined {
     if (!path) return obj as T;
@@ -58,23 +58,23 @@ export abstract class BaseStateManager implements IStateManager {
     return path
       .split(".")
       .reduce(
-        (current, key) =>
-          current && typeof current === "object" ? current[key] : undefined,
-        obj,
+        (current: unknown, key: string) =>
+          current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined,
+        obj as unknown,
       ) as T;
   }
 
   protected setNestedValue(
-    obj: Record<string, any>,
+    obj: Record<string, unknown>,
     path: string,
-    value: any,
-  ): Record<string, any> {
-    if (!path) return value as Record<string, any>;
+    value: unknown,
+  ): Record<string, unknown> {
+    if (!path) return value as Record<string, unknown>;
 
     const keys = path.split(".");
     if (keys.length === 0) return obj;
 
-    const result = { ...obj } as Record<string, any>;
+    const result = { ...obj } as Record<string, unknown>;
     let current = result;
 
     for (let i = 0; i < keys.length - 1; i += 1) {
@@ -86,8 +86,8 @@ export abstract class BaseStateManager implements IStateManager {
         current[key] === null ||
         typeof current[key] !== "object";
 
-      current[key] = shouldInitialize ? {} : { ...current[key] };
-      current = current[key];
+      current[key] = shouldInitialize ? {} : { ...(current[key] as Record<string, unknown>) };
+      current = current[key] as Record<string, unknown>;
     }
 
     const lastKey = keys[keys.length - 1];

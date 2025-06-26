@@ -27,7 +27,7 @@ export type HookManager = IHookManager;
 class ReactComponentRegistry implements IComponentRegistry {
   private components: Map<string, IComponentDefinition> = new Map();
   private events: IEventSystem = new EventSystem();
-  private extensions: Map<string, any> = new Map();
+  private extensions: Map<string, unknown> = new Map();
   private middleware: Array<IComponentMiddleware> = [];
   // Component factory for future extensibility
   // private componentFactory: ComponentFactoryManager =
@@ -82,7 +82,7 @@ class ReactComponentRegistry implements IComponentRegistry {
 
       try {
         const result = middleware(
-          processedComponent as React.ComponentType<any>,
+          processedComponent as React.ComponentType<Record<string, unknown>>,
           definition.defaultProps || {},
           context,
         );
@@ -140,8 +140,8 @@ class ReactComponentRegistry implements IComponentRegistry {
    */
   create(
     name: string,
-    props: Record<string, any> = {},
-  ): React.ComponentType<any> | null {
+    props: Record<string, unknown> = {},
+  ): React.ComponentType<Record<string, unknown>> | null {
     const definition = this.get(name);
     if (!definition) {
       console.error(`Component ${name} not found in registry`);
@@ -164,16 +164,16 @@ class ReactComponentRegistry implements IComponentRegistry {
         // Ensure component is a React component type before passing to middleware
         if (
           typeof component === "function" &&
-          !(component as any).then &&
+          !(component as unknown as Promise<unknown>).then &&
           (component.prototype?.isReactComponent ||
             (typeof component === "function" &&
               !component.prototype?.isReactComponent))
         ) {
           component = middleware(
-            component as React.ComponentType<any>,
+            component as React.ComponentType<Record<string, unknown>>,
             mergedProps,
             context,
-          ) as React.ComponentType<any>;
+          ) as React.ComponentType<Record<string, unknown>>;
         }
       }
     }
@@ -188,25 +188,25 @@ class ReactComponentRegistry implements IComponentRegistry {
     // Ensure we're returning a valid React component
     if (
       typeof component === "function" &&
-      !(component as any).then &&
+      !(component as unknown as Promise<unknown>).then &&
       (component.prototype?.isReactComponent ||
         (typeof component === "function" &&
           !component.prototype?.isReactComponent))
     ) {
-      return component as React.ComponentType<any>;
+      return component as React.ComponentType<Record<string, unknown>>;
     }
 
     // If we somehow got a non-component, return a placeholder
     console.error(`Component ${name} is not a valid React component`);
     return (() => (
       <div>Invalid component: {name}</div>
-    )) as React.ComponentType<any>;
+    )) as React.ComponentType<Record<string, unknown>>;
   }
 
   /**
    * Register an extension
    */
-  registerExtension(name: string, extension: any): void {
+  registerExtension(name: string, extension: unknown): void {
     this.extensions.set(name, extension);
     this.events.emit("extension:registered", { name, extension });
   }
@@ -328,14 +328,14 @@ class ReactComponentRegistry implements IComponentRegistry {
   /**
    * Add event listener
    */
-  on(event: string, callback: Function, priority?: number): void {
+  on(event: string, callback: (...args: unknown[]) => unknown, priority?: number): void {
     this.events.on(event, callback, priority);
   }
 
   /**
    * Remove event listener
    */
-  off(event: string, callback: Function): void {
+  off(event: string, callback: (...args: unknown[]) => unknown): void {
     this.events.off(event, callback);
   }
 
@@ -345,14 +345,14 @@ class ReactComponentRegistry implements IComponentRegistry {
   mount(
     componentName: string,
     containerId: string,
-    props: Record<string, any> = {},
+    props: Record<string, unknown> = {},
   ): void {
     try {
       universalReactRenderer.render({
         component: componentName,
         props,
         containerId,
-        onDataChange: props.onDataChange,
+        onDataChange: props.onDataChange as ((data: unknown) => void) | undefined,
         onError: (error) => {
           console.error(`Error mounting component ${componentName}:`, error);
         },
@@ -378,13 +378,13 @@ class ReactComponentRegistry implements IComponentRegistry {
    */
   private createHookManager(): HookManager {
     return {
-      addHook: (event: string, callback: Function, priority?: number) => {
+      addHook: (event: string, callback: (...args: unknown[]) => unknown, priority?: number) => {
         this.events.on(event, callback, priority);
       },
-      removeHook: (event: string, callback: Function) => {
+      removeHook: (event: string, callback: (...args: unknown[]) => unknown) => {
         this.events.off(event, callback);
       },
-      executeHooks: (event: string, data?: any) => {
+      executeHooks: (event: string, data?: unknown) => {
         return this.events.emit(event, data);
       },
     };

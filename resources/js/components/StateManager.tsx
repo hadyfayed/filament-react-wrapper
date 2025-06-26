@@ -9,39 +9,39 @@ import React, {
 
 // Forward declaration of GlobalStateManager interface for use in Window interface
 interface GlobalStateManagerInterface {
-  setState(path: string, value: any): void;
-  getState<T = any>(path: string): T | undefined;
-  subscribe(path: string, callback: (value: any) => void): () => void;
+  setState(path: string, value: unknown): void;
+  getState<T = unknown>(path: string): T | undefined;
+  subscribe(path: string, callback: (value: unknown) => void): () => void;
   reset(): void;
 }
 
 // Extend Window interface for global properties
 declare global {
   interface Window {
-    workflowDataSync?: (path: string, data: any) => void;
+    workflowDataSync?: (statePath: string, data: any) => void;
     globalStateManager?: GlobalStateManagerInterface;
   }
 }
 
 // State management types
 export interface StateManagerState {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface StateAction {
   type: "SET_STATE" | "UPDATE_STATE" | "RESET_STATE" | "BATCH_UPDATE";
-  payload: any;
+  payload: unknown;
   path?: string;
 }
 
 export interface StateManagerContextType {
   state: StateManagerState;
-  setState: (path: string, value: any) => void;
-  updateState: (path: string, updater: (current: any) => any) => void;
-  getState: (path: string) => any;
+  setState: (path: string, value: unknown) => void;
+  updateState: (path: string, updater: (current: unknown) => unknown) => void;
+  getState: (path: string) => unknown;
   resetState: () => void;
-  batchUpdate: (updates: Array<{ path: string; value: any }>) => void;
-  subscribe: (path: string, callback: (value: any) => void) => () => void;
+  batchUpdate: (updates: Array<{ path: string; value: unknown }>) => void;
+  subscribe: (path: string, callback: (value: unknown) => void) => () => void;
 }
 
 // State reducer function
@@ -76,15 +76,15 @@ function stateReducer(
       return newState;
     }
     case "RESET_STATE":
-      return action.payload || {};
+      return (action.payload as StateManagerState) || {} as StateManagerState;
     default:
       return state;
   }
 }
 
 // Helper functions for nested state management
-function getNestedValue<T = any>(
-  obj: Record<string, any>,
+function getNestedValue<T = unknown>(
+  obj: Record<string, unknown>,
   path: string,
 ): T | undefined {
   if (!path) return obj as T;
@@ -93,17 +93,17 @@ function getNestedValue<T = any>(
   return path
     .split(".")
     .reduce(
-      (current, key) =>
-        current && typeof current === "object" ? current[key] : undefined,
-      obj,
+      (current: unknown, key: string) =>
+        current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined,
+      obj as unknown,
     ) as T;
 }
 
 function setNestedValue(
-  obj: Record<string, any>,
+  obj: Record<string, unknown>,
   path: string,
-  value: any,
-): Record<string, any> {
+  value: unknown,
+): Record<string, unknown> {
   if (!path) return value as Record<string, any>;
 
   const keys = path.split(".");
@@ -124,8 +124,8 @@ function setNestedValue(
       typeof current[key] !== "object";
 
     // Either initialize or clone the existing object
-    current[key] = shouldInitialize ? {} : { ...current[key] };
-    current = current[key];
+    current[key] = shouldInitialize ? {} : { ...(current[key] as Record<string, unknown>) };
+    current = current[key] as Record<string, unknown>;
   }
 
   // Set the value at the final key
@@ -152,10 +152,9 @@ export interface StateManagerProviderProps {
   syncPath?: string;
 }
 
-export const StateManagerProvider: React.FC<StateManagerProviderProps> =
-  React.memo(({ children, initialState = {}, onStateChange, syncPath }) => {
+const StateManagerProviderComponent: React.FC<StateManagerProviderProps> = React.memo(({ children, initialState = {}, onStateChange, syncPath }) => {
     const [state, dispatch] = useReducer(stateReducer, initialState);
-    const subscribersRef = React.useRef<Map<string, Set<(value: any) => void>>>(
+    const subscribersRef = React.useRef<Map<string, Set<(value: unknown) => void>>>(
       new Map(),
     );
 
@@ -227,12 +226,12 @@ export const StateManagerProvider: React.FC<StateManagerProviderProps> =
       return () => clearTimeout(timeoutId);
     }, [notifySubscribers]);
 
-    const setState = useCallback((path: string, value: any) => {
+    const setState = useCallback((path: string, value: unknown) => {
       dispatch({ type: "SET_STATE", path, payload: value });
     }, []);
 
     const updateState = useCallback(
-      (path: string, updater: (current: any) => any) => {
+      (path: string, updater: (current: unknown) => unknown) => {
         dispatch({ type: "UPDATE_STATE", path, payload: updater });
       },
       [],
@@ -250,14 +249,14 @@ export const StateManagerProvider: React.FC<StateManagerProviderProps> =
     }, []);
 
     const batchUpdate = useCallback(
-      (updates: Array<{ path: string; value: any }>) => {
+      (updates: Array<{ path: string; value: unknown }>) => {
         dispatch({ type: "BATCH_UPDATE", payload: updates });
       },
       [],
     );
 
     const subscribe = useCallback(
-      (path: string, callback: (value: any) => void) => {
+      (path: string, callback: (value: unknown) => void) => {
         if (!path || typeof callback !== "function") {
           return () => {}; // Return no-op for invalid params
         }
@@ -325,6 +324,10 @@ export const StateManagerProvider: React.FC<StateManagerProviderProps> =
     );
   });
 
+StateManagerProviderComponent.displayName = 'StateManagerProvider';
+
+export const StateManagerProvider = StateManagerProviderComponent;
+
 // Hook to use state manager
 export const useStateManager = (): StateManagerContextType => {
   const context = useContext(StateManagerContext);
@@ -337,7 +340,7 @@ export const useStateManager = (): StateManagerContextType => {
 };
 
 // Hook for specific state path - FIXED WITH PROPER SUBSCRIPTIONS
-export const useStatePath = <T = any,>(
+export const useStatePath = <T = unknown>(
   path: string,
   defaultValue?: T,
 ): [T, (value: T | ((prev: T) => T)) => void] => {
@@ -345,17 +348,17 @@ export const useStatePath = <T = any,>(
 
   // Initialize local state with value from state manager or default
   const [localState, setLocalState] = React.useState<T>(() => {
-    const stateValue = getState(path);
-    return stateValue !== undefined ? stateValue : (defaultValue as T);
+    const stateValue = getState(path) as T;
+    return stateValue !== undefined ? stateValue : (defaultValue ?? ({} as T));
   });
 
   // Subscribe to changes in the state path with error handling
   useEffect(() => {
     let isMounted = true;
 
-    const unsubscribe = subscribe(path, (value: T) => {
+    const unsubscribe = subscribe(path, (value: unknown) => {
       if (isMounted) {
-        const newValue = value !== undefined ? value : (defaultValue as T);
+        const newValue = value !== undefined ? (value as T) : (defaultValue ?? ({} as T));
         setLocalState(newValue);
       }
     });
@@ -364,7 +367,7 @@ export const useStatePath = <T = any,>(
       isMounted = false;
       unsubscribe();
     };
-  }, [path, defaultValue]); // Removed subscribe dependency to prevent infinite subscriptions
+  }, [path, defaultValue, subscribe]);
 
   // Create a memoized setter function
   const setter = useCallback(
@@ -374,7 +377,7 @@ export const useStatePath = <T = any,>(
           const updater = value as (prev: T) => T;
           const currentValue = getState(path);
           const newValue = updater(
-            currentValue !== undefined ? currentValue : (defaultValue as T),
+            currentValue !== undefined ? (currentValue as T) : (defaultValue ?? ({} as T)),
           );
           setState(path, newValue);
         } else {
@@ -424,7 +427,7 @@ export function withStateManager<P extends object>(
 // Global state manager for cross-component communication
 export class GlobalStateManager implements GlobalStateManagerInterface {
   private _state: StateManagerState = {};
-  public readonly subscribers: Map<string, Set<(value: any) => void>> = new Map();
+  public readonly subscribers: Map<string, Set<(value: unknown) => void>> = new Map();
   private _notifyingPaths?: Set<string>; // Track paths currently being notified to prevent cycles
 
   public get state(): StateManagerState {
@@ -436,7 +439,7 @@ export class GlobalStateManager implements GlobalStateManagerInterface {
    * @param path Dot-notation path to set value at
    * @param value Value to set
    */
-  setState(path: string, value: any): void {
+  setState(path: string, value: unknown): void {
     if (!path) return;
 
     const newState = setNestedValue(this._state, path, value);
@@ -449,7 +452,7 @@ export class GlobalStateManager implements GlobalStateManagerInterface {
    * @param path Dot-notation path to get value from
    * @returns The value at the specified path or undefined
    */
-  getState<T = any>(path: string): T | undefined {
+  getState<T = unknown>(path: string): T | undefined {
     return getNestedValue<T>(this._state, path);
   }
 
@@ -459,7 +462,7 @@ export class GlobalStateManager implements GlobalStateManagerInterface {
    * @param callback Function to call when value changes
    * @returns Unsubscribe function
    */
-  subscribe(path: string, callback: (value: any) => void): () => void {
+  subscribe(path: string, callback: (value: unknown) => void): () => void {
     if (!path || typeof callback !== "function") {
       return () => {}; // Return no-op if invalid params
     }
@@ -494,7 +497,7 @@ export class GlobalStateManager implements GlobalStateManagerInterface {
    * @param path Path that was changed
    * @param value New value at the path
    */
-  public notifySubscribers(path: string, value: any): void {
+  public notifySubscribers(path: string, value: unknown): void {
     if (!path) return;
 
     // Prevent circular notifications by tracking currently notifying paths
@@ -552,10 +555,69 @@ export class GlobalStateManager implements GlobalStateManagerInterface {
   }
 
   /**
-   * Resets the state and clears all subscribers
+   * Update state with a function
+   */
+  updateState(path: string, updater: (current: unknown) => unknown): void {
+    const currentValue = this.getState(path);
+    const newValue = updater(currentValue);
+    this.setState(path, newValue);
+  }
+
+  /**
+   * Reset state with optional new state
+   */
+  resetState(newState?: StateManagerState): void {
+    this._state = newState || {};
+    // Notify all subscribers of the reset
+    this.subscribers.forEach((callbacks, path) => {
+      const value = this.getState(path);
+      callbacks.forEach(callback => {
+        try {
+          callback(value);
+        } catch (error) {
+          console.error(`Error in reset callback for path ${path}:`, error);
+        }
+      });
+    });
+  }
+
+  /**
+   * Batch update multiple paths
+   */
+  batchUpdate(updates: Array<{ path: string; value: unknown }>): void {
+    // Update all values first
+    updates.forEach(({ path, value }) => {
+      if (path) {
+        const newState = setNestedValue(this._state, path, value);
+        this._state = newState;
+      }
+    });
+    
+    // Then notify subscribers for all affected paths
+    const affectedPaths = new Set<string>();
+    updates.forEach(({ path }) => {
+      if (path) {
+        affectedPaths.add(path);
+        // Also add parent paths
+        const pathParts = path.split('.');
+        for (let i = 1; i < pathParts.length; i++) {
+          affectedPaths.add(pathParts.slice(0, i).join('.'));
+        }
+      }
+    });
+    
+    // Notify all affected paths
+    affectedPaths.forEach(path => {
+      const value = this.getState(path);
+      this.notifySubscribers(path, value);
+    });
+  }
+
+  /**
+   * Resets the state and clears all subscribers (legacy method)
    */
   reset(): void {
-    this._state = {};
+    this.resetState();
     this.subscribers.clear();
   }
 }

@@ -34,8 +34,8 @@ export interface IStateValidator {
 }
 
 export interface IStatePersistence {
-  save(key: string, state: IStateManagerState): Promise<void>;
-  load(key: string): Promise<IStateManagerState | null>;
+  save(key: string, state: unknown): Promise<void>;
+  load(key: string): Promise<unknown>;
   remove(key: string): Promise<void>;
   clear(): Promise<void>;
 }

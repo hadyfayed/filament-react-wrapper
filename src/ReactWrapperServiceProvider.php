@@ -4,9 +4,15 @@ namespace HadyFayed\ReactWrapper;
 
 use HadyFayed\ReactWrapper\Services\ReactComponentRegistry;
 use HadyFayed\ReactWrapper\Services\ExtensionManager;
+use HadyFayed\ReactWrapper\Services\AssetManager;
+use HadyFayed\ReactWrapper\Services\VariableShareService;
 use HadyFayed\ReactWrapper\Factories\ReactComponentFactory;
 use HadyFayed\ReactWrapper\Contracts\ReactRegistryInterface;
-use HadyFayed\ReactWrapper\FilamentReactWrapperPlugin;
+use HadyFayed\ReactWrapper\Integrations\FilamentIntegration;
+use HadyFayed\ReactWrapper\Mapping\ReactPhpFunctionMap;
+use HadyFayed\ReactWrapper\Middleware\ReactWrapperMiddleware;
+use HadyFayed\ReactWrapper\Blade\ReactDirective;
+use HadyFayed\ReactWrapper\Console\IntegrationReportCommand;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 
@@ -23,6 +29,12 @@ class ReactWrapperServiceProvider extends ServiceProvider
         // Register factories
         $this->registerFactories();
         
+        // Register middleware
+        $this->registerMiddleware();
+        
+        // Register Blade directives
+        $this->registerBladeDirectives();
+        
         // Register event listeners
         $this->registerEventListeners();
     }
@@ -34,8 +46,9 @@ class ReactWrapperServiceProvider extends ServiceProvider
         
         // Note: Views removed - using FilamentAsset for script loading
 
-        // Register Blade components
+        // Register Blade components and directives
         $this->registerBladeComponents();
+        $this->app->make(ReactDirective::class)->register();
 
         // Boot extensions if enabled
         if (config('react-wrapper.extensions.auto_boot', true)) {
@@ -50,6 +63,12 @@ class ReactWrapperServiceProvider extends ServiceProvider
             $this->discoverComponents();
         }
 
+        // Initialize variable sharing
+        $this->initializeVariableSharing();
+
+        // Register console commands
+        $this->registerCommands();
+
         // Register information for Laravel's "About" command
         $this->registerAboutCommand();
     }
@@ -63,9 +82,25 @@ class ReactWrapperServiceProvider extends ServiceProvider
         // Register extension manager
         $this->app->singleton(ExtensionManager::class);
 
+        // Register asset manager
+        $this->app->singleton(AssetManager::class);
+
+        // Register variable share service
+        $this->app->singleton(VariableShareService::class);
+
+        // Register integrations
+        $this->app->singleton(FilamentIntegration::class);
+
+        // Register function mapping
+        $this->app->singleton(ReactPhpFunctionMap::class);
+
         // Aliases for easier access
         $this->app->alias(ReactComponentRegistry::class, 'react-wrapper.registry');
         $this->app->alias(ExtensionManager::class, 'react-wrapper.extensions');
+        $this->app->alias(AssetManager::class, 'react-wrapper.assets');
+        $this->app->alias(VariableShareService::class, 'react-wrapper.variables');
+        $this->app->alias(FilamentIntegration::class, 'react-wrapper.filament');
+        $this->app->alias(ReactPhpFunctionMap::class, 'react-wrapper.mapping');
     }
 
     protected function registerFactories(): void
@@ -75,6 +110,18 @@ class ReactWrapperServiceProvider extends ServiceProvider
         });
 
         $this->app->alias(ReactComponentFactory::class, 'react-wrapper.factory');
+    }
+
+    protected function registerMiddleware(): void
+    {
+        $this->app->singleton(ReactWrapperMiddleware::class);
+        $this->app->alias(ReactWrapperMiddleware::class, 'react-wrapper.middleware');
+    }
+
+    protected function registerBladeDirectives(): void
+    {
+        $this->app->singleton(ReactDirective::class);
+        $this->app->alias(ReactDirective::class, 'react-wrapper.directives');
     }
 
     protected function registerEventListeners(): void
@@ -137,16 +184,12 @@ class ReactWrapperServiceProvider extends ServiceProvider
 
     protected function registerFilamentIntegration(): void
     {
-        if (config('react-wrapper.integrations.filament.enabled', true) && 
-            class_exists(\Filament\FilamentServiceProvider::class)) {
+        if (config('react-wrapper.integrations.filament.enabled', true)) {
+            // Initialize Filament integration without plugin
+            $filamentIntegration = $this->app->make(FilamentIntegration::class);
+            $filamentIntegration->initialize();
             
-            // Register the Filament plugin
-            $this->app->singleton(FilamentReactWrapperPlugin::class);
-            
-            // Register Filament plugin if auto-register is enabled
-            if (config('react-wrapper.integrations.filament.auto_register', true)) {
-                Event::dispatch('react-wrapper.filament.integrating');
-            }
+            Event::dispatch('react-wrapper.filament.integrated');
         }
     }
 
@@ -154,11 +197,25 @@ class ReactWrapperServiceProvider extends ServiceProvider
     {
         $registry = $this->app->make(ReactComponentRegistry::class);
         $paths = config('react-wrapper.registry.auto_discovery.paths', []);
+        $patterns = config('react-wrapper.registry.auto_discovery.patterns', ['*.tsx', '*.jsx']);
         
-        foreach ($paths as $path) {
-            // Auto-discovery logic would go here
-            // For now, we'll just dispatch an event
-            Event::dispatch('react-wrapper.components.discovering', [$path]);
+        foreach ($paths as $basePath) {
+            $fullPath = base_path($basePath);
+            if (!is_dir($fullPath)) {
+                continue;
+            }
+            
+            Event::dispatch('react-wrapper.components.discovering', [$fullPath]);
+            
+            foreach ($patterns as $pattern) {
+                $files = glob($fullPath . '/**/' . $pattern, GLOB_BRACE);
+                
+                foreach ($files as $file) {
+                    $this->autoRegisterComponent($registry, $file, $basePath);
+                }
+            }
+            
+            Event::dispatch('react-wrapper.components.discovered', [$fullPath, count($files ?? [])]);
         }
     }
 
@@ -175,6 +232,10 @@ class ReactWrapperServiceProvider extends ServiceProvider
                 'Prebuilt Assets' => file_exists(public_path('vendor/react-wrapper/js/react-wrapper.js')) ? 'Yes' : 'No',
                 'Filament Integration' => config('react-wrapper.integrations.filament.enabled', true) ? 'Enabled' : 'Disabled',
                 'Auto Discovery' => config('react-wrapper.registry.auto_discovery.enabled', true) ? 'Enabled' : 'Disabled',
+                'Vite Dev Server' => $this->app->make(AssetManager::class)->isViteDevServerRunning() ? 'Running' : 'Not Running',
+                'Cache Enabled' => config('react-wrapper.registry.cache.enabled', true) ? 'Yes' : 'No',
+                'Integration Stats' => $this->app->make(ReactPhpFunctionMap::class)->getAverageIntegrationPercentage() . '%',
+                'Filament Integration' => $this->app->make(FilamentIntegration::class)->isFilamentAvailable() ? 'Available' : 'Not Available',
             ]);
         }
     }
@@ -187,5 +248,79 @@ class ReactWrapperServiceProvider extends ServiceProvider
             return $composer['version'] ?? '1.0.0';
         }
         return '1.0.0';
+    }
+    
+    protected function autoRegisterComponent(ReactComponentRegistry $registry, string $file, string $basePath): void
+    {
+        $relativePath = str_replace(base_path($basePath) . '/', '', $file);
+        $componentName = $this->extractComponentName($relativePath);
+        
+        if ($componentName && !$registry->has($componentName)) {
+            $registry->register($componentName, $componentName, [
+                'file_path' => $file,
+                'auto_discovered' => true,
+                'discovery_time' => now(),
+            ]);
+            
+            logger()->debug("Auto-discovered React component: {$componentName}", [
+                'file' => $file,
+                'relative_path' => $relativePath
+            ]);
+        }
+    }
+    
+    protected function extractComponentName(string $filePath): ?string
+    {
+        // Extract component name from file path
+        // Example: components/Button/index.tsx -> Button
+        // Example: components/Button.tsx -> Button
+        
+        $pathInfo = pathinfo($filePath);
+        $fileName = $pathInfo['filename'];
+        
+        // Skip index files, use directory name instead
+        if ($fileName === 'index') {
+            $dirName = basename(dirname($filePath));
+            return ucfirst($dirName);
+        }
+        
+        // Skip non-component files
+        if (in_array(strtolower($fileName), ['types', 'utils', 'helpers', 'constants'])) {
+            return null;
+        }
+        
+        return ucfirst($fileName);
+    }
+
+    protected function registerCommands(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                IntegrationReportCommand::class,
+            ]);
+        }
+    }
+
+    protected function initializeVariableSharing(): void
+    {
+        $variableShare = $this->app->make(VariableShareService::class);
+        
+        // Share common Laravel data
+        $variableShare->shareCommonData();
+        
+        // Share Livewire data if available
+        $variableShare->shareLivewireData();
+        
+        // Register auto-discovery of components for asset management
+        $assetManager = $this->app->make(AssetManager::class);
+        $registry = $this->app->make(ReactComponentRegistry::class);
+        
+        foreach ($registry->all() as $name => $config) {
+            $assetManager->registerComponentAsset($name, [
+                'js' => $config['config']['file_path'] ?? "resources/js/components/{$name}.tsx",
+                'lazy' => $config['config']['lazy'] ?? config('react-wrapper.defaults.lazy', false),
+                'preload' => $config['config']['preload'] ?? false,
+            ]);
+        }
     }
 }

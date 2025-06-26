@@ -5,7 +5,7 @@
 
 interface ComponentInfo {
   name: string;
-  props: Record<string, any>;
+  props: Record<string, unknown>;
   mountTime: number;
   renderCount: number;
   lastRenderTime: number;
@@ -23,14 +23,14 @@ interface PerformanceMetrics {
 
 interface StateChange {
   path: string;
-  oldValue: any;
-  newValue: any;
+  oldValue: unknown;
+  newValue: unknown;
   timestamp: number;
   source: string;
 }
 
 class DevTools {
-  private isEnabled: boolean = false;
+  private _isEnabled: boolean = false;
   private components: Map<string, ComponentInfo> = new Map();
   private performanceMetrics: PerformanceMetrics[] = [];
   private stateHistory: StateChange[] = [];
@@ -38,9 +38,9 @@ class DevTools {
   private observers: Set<(event: DevToolsEvent) => void> = new Set();
 
   constructor() {
-    this.isEnabled = this.shouldEnable();
+    this._isEnabled = this.shouldEnable();
     
-    if (this.isEnabled) {
+    if (this._isEnabled) {
       this.initializeDevTools();
     }
   }
@@ -60,7 +60,7 @@ class DevTools {
   private initializeDevTools(): void {
     // Add to window for console access
     if (typeof window !== 'undefined') {
-      (window as any).__REACT_WRAPPER_DEV_TOOLS__ = this;
+      (window as unknown as Record<string, unknown>).__REACT_WRAPPER_DEV_TOOLS__ = this;
     }
 
     // Log initialization
@@ -125,7 +125,7 @@ class DevTools {
 
   // Component tracking methods
   trackComponentMount(name: string, props: Record<string, any>): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     const info: ComponentInfo = {
       name,
@@ -147,7 +147,7 @@ class DevTools {
   }
 
   trackComponentRender(name: string, props: Record<string, any>): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     const info = this.components.get(name);
     if (info) {
@@ -163,7 +163,7 @@ class DevTools {
   }
 
   trackComponentUnmount(name: string): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     this.notifyObservers({
       type: 'component:unmounted',
@@ -174,7 +174,7 @@ class DevTools {
   }
 
   trackComponentError(name: string, error: Error): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     const info = this.components.get(name);
     if (info) {
@@ -190,7 +190,7 @@ class DevTools {
   }
 
   trackComponentWarning(name: string, warning: string): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     const info = this.components.get(name);
     if (info) {
@@ -207,7 +207,7 @@ class DevTools {
 
   // State tracking methods
   trackStateChange(path: string, oldValue: any, newValue: any, source: string = 'unknown'): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     const change: StateChange = {
       path,
@@ -234,7 +234,7 @@ class DevTools {
 
   // Performance tracking methods
   recordPerformanceMetric(metric: PerformanceMetrics): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     this.performanceMetrics.push(metric);
 
@@ -307,7 +307,7 @@ class DevTools {
 
   // Debug panel methods
   showDebugPanel(): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     const panel = this.createDebugPanel();
     document.body.appendChild(panel);
@@ -403,7 +403,7 @@ class DevTools {
 
   // Logging methods
   logComponentInfo(): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     console.group('%c[React Wrapper] Component Info', 'color: #059669; font-weight: bold;');
     this.components.forEach((info, name) => {
@@ -413,7 +413,7 @@ class DevTools {
   }
 
   logStateInfo(): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     console.group('%c[React Wrapper] State History', 'color: #DC2626; font-weight: bold;');
     this.stateHistory.slice(-10).forEach(change => {
@@ -423,7 +423,7 @@ class DevTools {
   }
 
   logPerformanceInfo(): void {
-    if (!this.isEnabled) return;
+    if (!this._isEnabled) return;
 
     console.group('%c[React Wrapper] Performance Metrics', 'color: #7C2D12; font-weight: bold;');
     console.table(this.performanceMetrics.slice(-20));
@@ -431,15 +431,19 @@ class DevTools {
   }
 
   // Make logging methods public so they can be used by other services
-  public log(message: string, ...args: any[]): void {
-    console.log(`%c[React Wrapper] ${message}`, 'color: #4F46E5;', ...args);
+  public log(message: string, data?: unknown): void {
+    if (data !== undefined) {
+      console.log(`%c[React Wrapper] ${message}`, 'color: #4F46E5;', data);
+    } else {
+      console.log(`%c[React Wrapper] ${message}`, 'color: #4F46E5;');
+    }
   }
 
-  public warn(message: string, ...args: any[]): void {
+  public warn(message: string, ...args: unknown[]): void {
     console.warn(`%c[React Wrapper] ${message}`, 'color: #D97706;', ...args);
   }
 
-  public error(message: string, ...args: any[]): void {
+  public error(message: string, ...args: unknown[]): void {
     console.error(`%c[React Wrapper] ${message}`, 'color: #DC2626;', ...args);
   }
 
@@ -461,13 +465,13 @@ class DevTools {
 
   // Public API methods
   enable(): void {
-    this.isEnabled = true;
+    this._isEnabled = true;
     localStorage.setItem('react-wrapper-debug', 'true');
     this.initializeDevTools();
   }
 
   disable(): void {
-    this.isEnabled = false;
+    this._isEnabled = false;
     localStorage.removeItem('react-wrapper-debug');
     
     // Remove debug panel if exists
@@ -475,6 +479,10 @@ class DevTools {
     if (panel) {
       panel.remove();
     }
+  }
+
+  isEnabled(): boolean {
+    return this._isEnabled;
   }
 
   clear(): void {

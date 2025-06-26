@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 class CacheExtension extends BaseReactExtension
 {
     protected string $name = 'cache';
-    protected string $version = '1.0.0';
+    protected string $version = '2.0.1';
 
     public function register(): void
     {
@@ -28,25 +28,25 @@ class CacheExtension extends BaseReactExtension
     public function addCacheMiddleware($data): mixed
     {
         $definition = $data['definition'] ?? null;
-        
+
         if (!$definition || !($definition['config']['cache'] ?? false)) {
             return $data;
         }
 
         // Add cache key generation logic here
         $cacheKey = $this->generateCacheKey($definition);
-        
+
         // Store cache key in component config
         $data['definition']['config']['cacheKey'] = $cacheKey;
-        
+
         return $data;
     }
 
     protected function generateCacheKey(array $definition): string
     {
         return 'react_component_' . md5(
-            $definition['name'] . 
-            serialize($definition['defaultProps'] ?? []) . 
+            $definition['name'] .
+            serialize($definition['defaultProps'] ?? []) .
             ($definition['config']['version'] ?? '1.0.0')
         );
     }

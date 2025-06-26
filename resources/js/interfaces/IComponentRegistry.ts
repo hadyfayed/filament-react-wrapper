@@ -3,6 +3,8 @@
  * Following Interface Segregation Principle
  */
 
+import React from 'react';
+
 export interface IComponentDefinition {
   name: string;
   component:

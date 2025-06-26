@@ -5,10 +5,10 @@ import { componentRegistry } from "./ReactComponentRegistry";
 // Interface for component data and state synchronization
 export interface ReactRendererProps {
   component: string;
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
   statePath?: string;
   containerId: string;
-  onDataChange?: (data: any) => void;
+  onDataChange?: (data: unknown) => void;
   onError?: (error: Error) => void;
 }
 
@@ -64,8 +64,8 @@ class ReactErrorBoundary extends React.Component<
 // Universal React renderer wrapper component
 const UniversalReactWrapper: React.FC<{
   componentName: string;
-  componentProps: Record<string, any>;
-  onDataChange?: (data: any) => void;
+  componentProps: Record<string, unknown>;
+  onDataChange?: (data: unknown) => void;
   onError?: (error: Error) => void;
   statePath?: string;
 }> = React.memo(
@@ -75,7 +75,38 @@ const UniversalReactWrapper: React.FC<{
       return componentRegistry.get(componentName);
     }, [componentName]);
 
-    if (!componentDef) {
+    // Always call useMemo for Component to avoid conditional hooks
+    const Component:
+      | React.ComponentType<Record<string, unknown>>
+      | React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>>
+      | null = React.useMemo(() => {
+        if (!componentDef) return null;
+        
+        if (componentDef.isAsync) {
+          // If isAsync is true, we assume componentDef.component is the function that returns a promise
+          return React.lazy(
+            componentDef.component as () => Promise<{
+              default: React.ComponentType<Record<string, unknown>>;
+            }>,
+          );
+        } else {
+          // Otherwise, it's a regular React component type
+          return componentDef.component as React.ComponentType<Record<string, unknown>>;
+        }
+      }, [componentDef]);
+
+    // Use useMemo to prevent unnecessary re-renders when props haven't changed
+    const mergedProps = React.useMemo(
+      () => ({
+        ...(componentDef?.defaultProps || {}),
+        ...componentProps,
+        onDataChange,
+      }),
+      [componentDef?.defaultProps, componentProps, onDataChange],
+    );
+
+    // Handle missing component after all hooks have been called
+    if (!componentDef || !Component) {
       const error = new Error(
         `Component "${componentName}" not found in registry`,
       );
@@ -83,39 +114,12 @@ const UniversalReactWrapper: React.FC<{
       return (
         <div className="p-4 border border-yellow-300 rounded-md bg-yellow-50">
           <p className="text-yellow-800">
-            Component "{componentName}" not found. Available components:{" "}
+            Component &quot;{componentName}&quot; not found. Available components:{" "}
             {componentRegistry.getComponentNames().join(", ") || "None"}
           </p>
         </div>
       );
     }
-
-    const Component:
-      | React.ComponentType<any>
-      | React.LazyExoticComponent<React.ComponentType<any>> =
-      React.useMemo(() => {
-        if (componentDef.isAsync) {
-          // If isAsync is true, we assume componentDef.component is the function that returns a promise
-          return React.lazy(
-            componentDef.component as () => Promise<{
-              default: React.ComponentType<any>;
-            }>,
-          );
-        } else {
-          // Otherwise, it's a regular React component type
-          return componentDef.component as React.ComponentType<any>;
-        }
-      }, [componentDef.component, componentDef.isAsync]);
-
-    // Use useMemo to prevent unnecessary re-renders when props haven't changed
-    const mergedProps = React.useMemo(
-      () => ({
-        ...componentDef.defaultProps,
-        ...componentProps,
-        onDataChange,
-      }),
-      [componentDef.defaultProps, componentProps, onDataChange],
-    );
 
     return (
       <ReactErrorBoundary onError={onError}>
@@ -159,7 +163,7 @@ const UniversalReactWrapper: React.FC<{
       return prevKeys.every(key => 
         prevProps.componentProps[key] === nextProps.componentProps[key]
       );
-    } catch (e) {
+    } catch {
       // If comparison fails, fall back to reference equality
       return prevProps.componentProps === nextProps.componentProps;
     }
@@ -199,7 +203,7 @@ export class UniversalReactRenderer {
       }
 
       // Enhanced data change handler with state path support (not using hooks here)
-      const handleDataChange = (data: any) => {
+      const handleDataChange = (data: unknown) => {
         if (onDataChange) {
           onDataChange(data);
         }
@@ -228,7 +232,7 @@ export class UniversalReactRenderer {
   /**
    * Update props for an already rendered component
    */
-  updateProps(containerId: string, newProps: Record<string, any>): void {
+  updateProps(containerId: string, newProps: Record<string, unknown>): void {
     const root = this.roots.get(containerId);
     const container = this.containers.get(containerId);
 
@@ -259,6 +263,13 @@ export class UniversalReactRenderer {
       this.roots.delete(containerId);
       this.containers.delete(containerId);
     }
+  }
+
+  /**
+   * Check if a component is rendered in the specified container
+   */
+  isRendered(containerId: string): boolean {
+    return this.roots.has(containerId);
   }
 
   /**

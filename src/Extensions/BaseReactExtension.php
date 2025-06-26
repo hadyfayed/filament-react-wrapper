@@ -7,7 +7,7 @@ use HadyFayed\ReactWrapper\Contracts\ReactExtensionInterface;
 abstract class BaseReactExtension implements ReactExtensionInterface
 {
     protected string $name;
-    protected string $version = '1.0.0';
+    protected string $version = '2.0.1';
     protected array $dependencies = [];
 
     public function getName(): string

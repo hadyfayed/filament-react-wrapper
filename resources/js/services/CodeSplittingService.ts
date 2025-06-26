@@ -544,6 +544,24 @@ class CodeSplittingService {
       componentName.toLowerCase().includes(keyword)
     );
   }
+
+  /**
+   * Preload component for better performance
+   */
+  async preloadComponent(componentName: string): Promise<void> {
+    try {
+      await this.loadComponent(componentName);
+    } catch (error) {
+      console.error(`Failed to preload component ${componentName}:`, error);
+    }
+  }
+
+  /**
+   * Check if component is loaded
+   */
+  isLoaded(componentName: string): boolean {
+    return this.cache.has(componentName);
+  }
 }
 
 // Export singleton instance

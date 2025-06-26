@@ -3,11 +3,12 @@
  * Handles versioning, compatibility, migrations, and updates
  */
 
+import React from 'react';
 import { devTools } from './DevTools';
 
 interface ComponentVersion {
   version: string;
-  component: any;
+  component: React.ComponentType<Record<string, unknown>>;
   metadata: ComponentMetadata;
   deprecated?: boolean;
   deprecationMessage?: string;
@@ -56,7 +57,7 @@ interface MigrationResult {
   success: boolean;
   fromVersion: string;
   toVersion: string;
-  migratedProps: Record<string, any>;
+  migratedProps: Record<string, unknown>;
   warnings: string[];
   errors: string[];
   manualStepsRequired: boolean;
@@ -101,7 +102,7 @@ class ComponentVersioningService {
   registerVersion(
     componentName: string, 
     version: string, 
-    component: any, 
+    component: unknown, 
     metadata: Partial<ComponentMetadata> = {}
   ): void {
     if (!this.versions.has(componentName)) {
@@ -124,7 +125,7 @@ class ComponentVersioningService {
 
     const componentVersion: ComponentVersion = {
       version,
-      component,
+      component: component as React.ComponentType<Record<string, unknown>>,
       metadata: fullMetadata,
       deprecated: false,
       dependencies: metadata.dependencies || []
@@ -141,9 +142,16 @@ class ComponentVersioningService {
   }
 
   /**
-   * Get a specific component version
+   * Get version string for a component
    */
-  getVersion(componentName: string, version?: string): ComponentVersion | null {
+  getVersion(componentName: string): string | undefined {
+    return this.defaultVersions.get(componentName);
+  }
+
+  /**
+   * Get a specific component version object
+   */
+  getComponentVersion(componentName: string, version?: string): ComponentVersion | null {
     const componentVersions = this.versions.get(componentName);
     if (!componentVersions) {
       return null;
@@ -183,7 +191,7 @@ class ComponentVersioningService {
    * Check if component version exists
    */
   hasVersion(componentName: string, version?: string): boolean {
-    return this.getVersion(componentName, version) !== null;
+    return this.getComponentVersion(componentName, version) !== null;
   }
 
   /**
@@ -204,7 +212,7 @@ class ComponentVersioningService {
     message?: string, 
     migrationPath?: string
   ): void {
-    const componentVersion = this.getVersion(componentName, version);
+    const componentVersion = this.getComponentVersion(componentName, version);
     if (componentVersion) {
       componentVersion.deprecated = true;
       componentVersion.deprecationMessage = message;
@@ -243,7 +251,7 @@ class ComponentVersioningService {
     componentName: string,
     fromVersion: string,
     toVersion: string,
-    props: Record<string, any>
+    props: Record<string, unknown>
   ): Promise<MigrationResult> {
     const result: MigrationResult = {
       success: false,
@@ -325,8 +333,8 @@ class ComponentVersioningService {
       autoMigrationAvailable: false
     };
 
-    const fromVersionObj = this.getVersion(componentName, fromVersion);
-    const toVersionObj = this.getVersion(componentName, toVersion);
+    const fromVersionObj = this.getComponentVersion(componentName, fromVersion);
+    const toVersionObj = this.getComponentVersion(componentName, toVersion);
 
     if (!fromVersionObj || !toVersionObj) {
       result.compatible = false;
@@ -339,8 +347,8 @@ class ComponentVersioningService {
     }
 
     // Check breaking changes
-    if (toVersionObj.breakingChanges) {
-      for (const change of toVersionObj.breakingChanges) {
+    if ((toVersionObj as ComponentVersion & { breakingChanges?: BreakingChange[] }).breakingChanges) {
+      for (const change of (toVersionObj as ComponentVersion & { breakingChanges: BreakingChange[] }).breakingChanges) {
         result.issues.push({
           severity: 'warning',
           type: 'breaking_change',
@@ -363,7 +371,7 @@ class ComponentVersioningService {
     // Check compatibility rules
     const rules = this.compatibilityRules.get(componentName) || [];
     for (const rule of rules) {
-      const ruleResult = rule(fromVersionObj, toVersionObj);
+      const ruleResult = rule(fromVersionObj as ComponentVersion, toVersionObj as ComponentVersion);
       if (ruleResult) {
         result.issues.push(...ruleResult.issues);
         result.recommendations.push(...ruleResult.recommendations);
@@ -445,14 +453,24 @@ class ComponentVersioningService {
   /**
    * Get version statistics
    */
-  getVersionStats(componentName?: string): any {
+  getVersionStats(componentName?: string): {
+    componentName?: string;
+    totalVersions: number;
+    latestVersion?: string;
+    deprecatedVersions: number;
+    totalComponents?: number;
+    deprecated?: ComponentVersion[];
+    componentsWithMultipleVersions?: string[];
+    hasBreakingChanges?: boolean;
+    dependencies?: ComponentDependency[];
+  } {
     if (componentName) {
       const versions = this.getAllVersions(componentName);
       return {
         componentName,
         totalVersions: versions.length,
         latestVersion: versions[0]?.version,
-        deprecated: versions.filter(v => v.deprecated).length,
+        deprecatedVersions: versions.filter(v => v.deprecated).length,
         hasBreakingChanges: versions.some(v => v.breakingChanges && v.breakingChanges.length > 0),
         dependencies: versions[0]?.dependencies || []
       };
@@ -467,7 +485,7 @@ class ComponentVersioningService {
       ),
       componentsWithMultipleVersions: allComponents.filter(name => 
         this.getAllVersions(name).length > 1
-      ).length,
+      ),
       deprecatedVersions: allComponents.reduce((sum, name) => 
         sum + this.getAllVersions(name).filter(v => v.deprecated).length, 0
       )
@@ -526,18 +544,56 @@ class ComponentVersioningService {
     this.registerAlias('*', 'stable', 'latest');
     this.registerAlias('*', 'beta', 'latest');
   }
+
+  /**
+   * Set version for a component
+   */
+  setVersion(componentName: string, version: string): void {
+    this.defaultVersions.set(componentName, version);
+  }
+
+  /**
+   * Check if component version is compatible
+   */
+  isCompatible(componentName: string, requiredVersion: string): boolean {
+    const currentVersion = this.getVersion(componentName);
+    if (!currentVersion) {
+      return false;
+    }
+    
+    // Simple semantic version compatibility check
+    const current = currentVersion.split('.').map(Number);
+    const required = requiredVersion.split('.').map(Number);
+    
+    // Major version must match
+    if (current[0] !== required[0]) {
+      return false;
+    }
+    
+    // Minor version must be >= required
+    if ((current[1] || 0) < (required[1] || 0)) {
+      return false;
+    }
+    
+    // Patch version must be >= required if minor versions are equal
+    if (current[1] === required[1] && (current[2] || 0) < (required[2] || 0)) {
+      return false;
+    }
+    
+    return true;
+  }
 }
 
 // Migration function type
 type MigrationFunction = (
-  props: Record<string, any>,
+  props: Record<string, unknown>,
   context: {
     componentName: string;
     fromVersion: string;
     toVersion: string;
   }
 ) => Promise<{
-  props: Record<string, any>;
+  props: Record<string, unknown>;
   warnings?: string[];
   manualStepsRequired?: boolean;
 }>;
