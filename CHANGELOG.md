@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2025-07-05
+
+### 🔧 Infrastructure
+
+#### Dependency Management
+- **NEW**: Comprehensive dependabot configuration for automated dependency updates
+- **NEW**: Separate update schedules for production vs development dependencies
+- **NEW**: Security-focused daily updates with high priority
+- **NEW**: Grouped ecosystem updates for related packages (React, TypeScript, Laravel, Filament)
+- **NEW**: Proper labeling and reviewer assignment for dependency PRs
+- **NEW**: Commit message prefixes for clear change tracking
+
+#### Configuration Details
+- **NPM Dependencies**: Weekly updates for production dependencies (Monday) and development (Tuesday)
+- **Composer Dependencies**: Weekly updates for production (Wednesday) and development (Thursday)
+- **Security Updates**: Daily monitoring and updates for both NPM and Composer packages
+- **Ecosystem Grouping**: Related packages updated together to prevent compatibility issues
+- **PR Management**: Limited open PRs per category to prevent update overwhelm
+
+#### Benefits
+- **Automated Security**: Daily security updates ensure vulnerabilities are addressed quickly
+- **Ecosystem Compatibility**: Grouped updates maintain package compatibility within ecosystems
+- **Reduced Maintenance**: Automated dependency management reduces manual update overhead
+- **Clear Tracking**: Structured commit messages and labels provide clear update history
+
 ## [3.1.0] - 2025-01-26
 
 ### 📚 Documentation

@@ -1,5 +1,6 @@
 {
     "name": "hadyfayed/filament-react-wrapper",
+    "version": "3.1.1",
     "description": "React component integration system for FilamentPHP applications",
     "keywords": ["filament", "react", "integration", "components", "universal", "laravel"],
     "license": "MIT",

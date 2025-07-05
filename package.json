@@ -1,6 +1,6 @@
 {
   "name": "@hadyfayed/filament-react-wrapper",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Enterprise React integration for Laravel/Filament - Smart asset loading, 90%+ React-PHP function mapping, no-plugin Filament integration",
   "type": "module",
   "main": "dist/index.es.js",

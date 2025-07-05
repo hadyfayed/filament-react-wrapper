@@ -1,6 +1,6 @@
 # React Wrapper for Laravel/Filament
 
-[![npm version](https://badge.fury.io/js/@hadyfayed/react-wrapper.svg)](https://badge.fury.io/js/@hadyfayed/react-wrapper)
+[![npm version](https://badge.fury.io/js/@hadyfayed/filament-react-wrapper.svg)](https://badge.fury.io/js/@hadyfayed/filament-react-wrapper)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Laravel](https://img.shields.io/badge/Laravel-10.0+-red.svg)](https://laravel.com)
@@ -27,13 +27,13 @@ A comprehensive React integration system for Laravel and Filament applications, 
 ### NPM Package
 
 ```bash
-npm install @hadyfayed/react-wrapper
+npm install @hadyfayed/filament-react-wrapper
 ```
 
 ### Composer Package
 
 ```bash
-composer require hadyfayed/react-wrapper
+composer require hadyfayed/filament-react-wrapper
 ```
 
 ### Laravel Setup
@@ -62,7 +62,7 @@ public function panel(Panel $panel): Panel
 3. **Add to your `app.js`:**
 
 ```javascript
-import '@hadyfayed/react-wrapper';
+import '@hadyfayed/filament-react-wrapper';
 ```
 
 4. **Build your assets:**
@@ -76,7 +76,7 @@ npm run build
 ### 1. Register a React Component
 
 ```typescript
-import { componentRegistry } from '@hadyfayed/react-wrapper';
+import { componentRegistry } from '@hadyfayed/filament-react-wrapper';
 import MyComponent from './components/MyComponent';
 
 // Simple registration
@@ -135,7 +135,7 @@ class EditUser extends EditRecord
 ### Basic Registration
 
 ```typescript
-import { componentRegistry } from '@hadyfayed/react-wrapper';
+import { componentRegistry } from '@hadyfayed/filament-react-wrapper';
 
 componentRegistry.register({
   name: 'UserCard',
@@ -174,7 +174,7 @@ componentRegistry.register({
 ### Bulk Registration
 
 ```typescript
-import { registerComponents } from '@hadyfayed/react-wrapper';
+import { registerComponents } from '@hadyfayed/filament-react-wrapper';
 
 const components = [
   { name: 'Button', component: Button },
@@ -428,7 +428,7 @@ class UserResource extends Resource
 ### Using State Manager Provider
 
 ```typescript
-import { StateManagerProvider, useStateManager } from '@hadyfayed/react-wrapper';
+import { StateManagerProvider, useStateManager } from '@hadyfayed/filament-react-wrapper';
 
 function App() {
   return (
@@ -461,7 +461,7 @@ function MyComponent() {
 ### Using State Path Hook
 
 ```typescript
-import { useStatePath } from '@hadyfayed/react-wrapper';
+import { useStatePath } from '@hadyfayed/filament-react-wrapper';
 
 function UserProfile() {
   const [user, setUser] = useStatePath('user', { name: '', email: '' });
@@ -484,7 +484,7 @@ function UserProfile() {
 ### Global State Manager
 
 ```typescript
-import { globalStateManager } from '@hadyfayed/react-wrapper';
+import { globalStateManager } from '@hadyfayed/filament-react-wrapper';
 
 // Set global state
 globalStateManager.setState('app.theme', 'dark');
@@ -506,7 +506,7 @@ unsubscribe();
 ### Using Persisted State Hook
 
 ```typescript
-import { usePersistedState } from '@hadyfayed/react-wrapper';
+import { usePersistedState } from '@hadyfayed/filament-react-wrapper';
 
 function ThemeSelector() {
   const [theme, setTheme] = usePersistedState('theme', 'light', {
@@ -527,7 +527,7 @@ function ThemeSelector() {
 ### Manual Persistence Service
 
 ```typescript
-import { statePersistenceService } from '@hadyfayed/react-wrapper';
+import { statePersistenceService } from '@hadyfayed/filament-react-wrapper';
 
 // Register a persistence config
 statePersistenceService.register({
@@ -639,7 +639,7 @@ class UserForm extends Form
 ### Middleware System
 
 ```typescript
-import { componentRegistry } from '@hadyfayed/react-wrapper';
+import { componentRegistry } from '@hadyfayed/filament-react-wrapper';
 
 // Global middleware
 componentRegistry.addMiddleware((component, props, context) => {
@@ -1094,7 +1094,7 @@ console.log('Active components:', universalReactRenderer.getActiveContainers());
 
 ```typescript
 import { render, screen } from '@testing-library/react';
-import { componentRegistry } from '@hadyfayed/react-wrapper';
+import { componentRegistry } from '@hadyfayed/filament-react-wrapper';
 import MyComponent from './MyComponent';
 
 describe('Component Registry', () => {
@@ -1119,7 +1119,7 @@ describe('Component Registry', () => {
 ### Integration Testing
 
 ```typescript
-import { StateManagerProvider, useStatePath } from '@hadyfayed/react-wrapper';
+import { StateManagerProvider, useStatePath } from '@hadyfayed/filament-react-wrapper';
 
 const TestComponent = () => {
   const [value, setValue] = useStatePath('test.value', 'initial');
@@ -1182,7 +1182,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone the repository
-git clone https://github.com/hadyfayed/react-wrapper.git
+git clone https://github.com/hadyfayed/filament-react-wrapper.git
 
 # Install dependencies
 npm install
@@ -1219,8 +1219,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - 📚 [Documentation](https://docs.hadyfayed.com/react-wrapper)
-- 💬 [Discussions](https://github.com/hadyfayed/react-wrapper/discussions)
-- 🐛 [Issue Tracker](https://github.com/hadyfayed/react-wrapper/issues)
+- 💬 [Discussions](https://github.com/hadyfayed/filament-react-wrapper/discussions)
+- 🐛 [Issue Tracker](https://github.com/hadyfayed/filament-react-wrapper/issues)
 - 📧 [Email Support](mailto:support@hadyfayed.com)
 
 ---
@@ -1228,7 +1228,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
   <p>Made with ❤️ by <a href="https://hadyfayed.com">Hady Fayed</a></p>
   <p>
-    <a href="https://github.com/hadyfayed/react-wrapper/stargazers">⭐ Star us on GitHub</a> •
+    <a href="https://github.com/hadyfayed/filament-react-wrapper/stargazers">⭐ Star us on GitHub</a> •
     <a href="https://twitter.com/hadyfayed">🐦 Follow on Twitter</a> •
     <a href="https://hadyfayed.com/blog">📝 Read our Blog</a>
   </p>
