@@ -3,24 +3,24 @@
  * Open for extension, closed for modification
  */
 
-import React from "react";
+import React from 'react';
 import {
   IComponentDefinition,
   IComponentContext,
   IComponentMiddleware,
-} from "../interfaces/IComponentRegistry";
+} from '../interfaces/IComponentRegistry';
 
 export abstract class BaseComponentFactory {
   abstract createComponent(
     definition: IComponentDefinition,
-    props: Record<string, any>,
+    props: Record<string, any>
   ): React.ComponentType<any> | null;
 
   protected applyMiddleware(
     component: React.ComponentType<any>,
     props: Record<string, any>,
     middleware: IComponentMiddleware[],
-    context: IComponentContext,
+    context: IComponentContext
   ): React.ComponentType<any> {
     return middleware.reduce((comp, mw) => {
       try {
@@ -39,10 +39,9 @@ export abstract class BaseComponentFactory {
 
   protected validateComponent(component: any): boolean {
     return (
-      typeof component === "function" &&
+      typeof component === 'function' &&
       (component.prototype?.isReactComponent ||
-        (typeof component === "function" &&
-          !component.prototype?.isReactComponent))
+        (typeof component === 'function' && !component.prototype?.isReactComponent))
     );
   }
 }
@@ -50,7 +49,7 @@ export abstract class BaseComponentFactory {
 export class SynchronousComponentFactory extends BaseComponentFactory {
   createComponent(
     definition: IComponentDefinition,
-    props: Record<string, any> = {},
+    props: Record<string, any> = {}
   ): React.ComponentType<any> | null {
     if (!definition.component || definition.isAsync) {
       return null;
@@ -67,7 +66,7 @@ export class SynchronousComponentFactory extends BaseComponentFactory {
     const mergedProps = { ...definition.defaultProps, ...props };
 
     // Create wrapper component with merged props
-    const WrappedComponent: React.ComponentType<any> = (componentProps) => {
+    const WrappedComponent: React.ComponentType<any> = componentProps => {
       return React.createElement(component, {
         ...mergedProps,
         ...componentProps,
@@ -85,7 +84,7 @@ export class AsynchronousComponentFactory extends BaseComponentFactory {
 
   async createComponentAsync(
     definition: IComponentDefinition,
-    _props: Record<string, any> = {},
+    _props: Record<string, any> = {}
   ): Promise<React.ComponentType<any> | null> {
     if (!definition.isAsync) {
       return null;
@@ -122,7 +121,7 @@ export class AsynchronousComponentFactory extends BaseComponentFactory {
 
   createComponent(
     definition: IComponentDefinition,
-    props: Record<string, any> = {},
+    props: Record<string, any> = {}
   ): React.ComponentType<any> | null {
     // For sync factory, return lazy component wrapper
     if (!definition.isAsync) {
@@ -132,9 +131,7 @@ export class AsynchronousComponentFactory extends BaseComponentFactory {
     return React.lazy(async () => {
       const component = await this.createComponentAsync(definition, props);
       return {
-        default:
-          component ||
-          (() => React.createElement("div", null, "Component failed to load")),
+        default: component || (() => React.createElement('div', null, 'Component failed to load')),
       };
     });
   }
@@ -150,7 +147,7 @@ export class ComponentFactoryManager {
 
   createComponent(
     definition: IComponentDefinition,
-    props: Record<string, any> = {},
+    props: Record<string, any> = {}
   ): React.ComponentType<any> | null {
     if (definition.isAsync) {
       return this.asyncFactory.createComponent(definition, props);
@@ -161,7 +158,7 @@ export class ComponentFactoryManager {
 
   async createComponentAsync(
     definition: IComponentDefinition,
-    props: Record<string, any> = {},
+    props: Record<string, any> = {}
   ): Promise<React.ComponentType<any> | null> {
     if (definition.isAsync) {
       return this.asyncFactory.createComponentAsync(definition, props);

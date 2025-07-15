@@ -50,6 +50,14 @@ npm run dev
 node scripts/build.js --target=all --verbose --skip-tests
 ```
 
+### vite-plugin-filament-react Integration
+This package now uses `vite-plugin-filament-react` for enhanced development experience:
+
+- **Auto-discovery**: Components automatically discovered and registered
+- **PHP Registry**: Generates PHP component registry in `dist/php/ComponentRegistry.php`
+- **Dev Tools**: Component inspector, state debugger, and performance monitor
+- **Dual Build**: NPM + Laravel asset generation
+
 ### Development Tools
 ```bash
 # Type checking

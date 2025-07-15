@@ -24,27 +24,50 @@ A comprehensive React integration system for Laravel and Filament applications, 
 
 ## 📦 Installation
 
-### NPM Package
+### Quick Start
 
 ```bash
+# Install packages
 npm install @hadyfayed/filament-react-wrapper
-```
-
-### Composer Package
-
-```bash
 composer require hadyfayed/filament-react-wrapper
+
+# Enhanced DX (recommended)
+npm install --save-dev vite-plugin-filament-react
 ```
+
+💡 **Pro Tip**: Use with [`vite-plugin-filament-react`](https://github.com/hadyfayed/vite-plugin-filament-react) for enhanced developer experience with auto-discovery, dev tools, and performance optimization.
 
 ### Laravel Setup
 
-1. **Publish the service provider:**
+1. **Add to your JavaScript entry:**
 
-```bash
-php artisan vendor:publish --provider="HadyFayed\ReactWrapper\ReactWrapperServiceProvider"
+```javascript
+// resources/js/app.js
+import '@hadyfayed/filament-react-wrapper';
 ```
 
-2. **Register the Filament plugin:**
+2. **Update Vite config (with plugin):**
+
+```javascript
+// vite.config.js
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import react from '@vitejs/plugin-react';
+import filamentReact from 'vite-plugin-filament-react';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+        react(),
+        filamentReact(), // Auto-discovery and dev tools
+    ],
+});
+```
+
+3. **Optional: Register the Filament plugin:**
 
 ```php
 // app/Providers/Filament/AdminPanelProvider.php

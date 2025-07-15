@@ -6,7 +6,11 @@ import React from 'react';
 
 // Re-export key interfaces
 export type { IComponentDefinition, IComponentRegistry } from '../interfaces/IComponentRegistry';
-export type { IStateManagerState, IStateManager, IStatePersistence } from '../interfaces/IStateManager';
+export type {
+  IStateManagerState,
+  IStateManager,
+  IStatePersistence,
+} from '../interfaces/IStateManager';
 
 // Import interfaces
 import type { IComponentRegistry } from '../interfaces/IComponentRegistry';

@@ -8,7 +8,7 @@ import {
   IStateManagerState,
   IStateValidator,
   IStatePersistence,
-} from "../interfaces/IStateManager";
+} from '../interfaces/IStateManager';
 
 export abstract class BaseStateManager implements IStateManager {
   protected state: IStateManagerState = {};
@@ -48,30 +48,29 @@ export abstract class BaseStateManager implements IStateManager {
     };
   }
 
-  protected getNestedValue<T = unknown>(
-    obj: Record<string, unknown>,
-    path: string,
-  ): T | undefined {
+  protected getNestedValue<T = unknown>(obj: Record<string, unknown>, path: string): T | undefined {
     if (!path) return obj as T;
-    if (!obj || typeof obj !== "object") return undefined;
+    if (!obj || typeof obj !== 'object') return undefined;
 
     return path
-      .split(".")
+      .split('.')
       .reduce(
         (current: unknown, key: string) =>
-          current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined,
-        obj as unknown,
+          current && typeof current === 'object'
+            ? (current as Record<string, unknown>)[key]
+            : undefined,
+        obj as unknown
       ) as T;
   }
 
   protected setNestedValue(
     obj: Record<string, unknown>,
     path: string,
-    value: unknown,
+    value: unknown
   ): Record<string, unknown> {
     if (!path) return value as Record<string, unknown>;
 
-    const keys = path.split(".");
+    const keys = path.split('.');
     if (keys.length === 0) return obj;
 
     const result = { ...obj } as Record<string, unknown>;
@@ -79,19 +78,17 @@ export abstract class BaseStateManager implements IStateManager {
 
     for (let i = 0; i < keys.length - 1; i += 1) {
       const key = keys[i];
-      if (key === undefined || key === "") continue;
+      if (key === undefined || key === '') continue;
 
       const shouldInitialize =
-        !(key in current) ||
-        current[key] === null ||
-        typeof current[key] !== "object";
+        !(key in current) || current[key] === null || typeof current[key] !== 'object';
 
       current[key] = shouldInitialize ? {} : { ...(current[key] as Record<string, unknown>) };
       current = current[key] as Record<string, unknown>;
     }
 
     const lastKey = keys[keys.length - 1];
-    if (lastKey !== undefined && lastKey !== "") {
+    if (lastKey !== undefined && lastKey !== '') {
       current[lastKey] = value;
     }
 
@@ -102,33 +99,27 @@ export abstract class BaseStateManager implements IStateManager {
     // Notify exact path subscribers
     const exactSubscribers = this.subscribers.get(path);
     if (exactSubscribers) {
-      exactSubscribers.forEach((callback) => {
+      exactSubscribers.forEach(callback => {
         try {
           callback(value);
         } catch (error) {
-          console.error(
-            `Error in subscriber callback for path ${path}:`,
-            error,
-          );
+          console.error(`Error in subscriber callback for path ${path}:`, error);
         }
       });
     }
 
     // Notify parent path subscribers
-    const pathParts = path.split(".");
+    const pathParts = path.split('.');
     for (let i = pathParts.length - 1; i > 0; i -= 1) {
-      const parentPath = pathParts.slice(0, i).join(".");
+      const parentPath = pathParts.slice(0, i).join('.');
       const parentSubscribers = this.subscribers.get(parentPath);
       if (parentSubscribers) {
         const parentValue = this.getNestedValue(this.state, parentPath);
-        parentSubscribers.forEach((callback) => {
+        parentSubscribers.forEach(callback => {
           try {
             callback(parentValue);
           } catch (error) {
-            console.error(
-              `Error in subscriber callback for parent path ${parentPath}:`,
-              error,
-            );
+            console.error(`Error in subscriber callback for parent path ${parentPath}:`, error);
           }
         });
       }
@@ -145,7 +136,7 @@ export class StandardStateManager extends BaseStateManager {
   }
 
   updateState(path: string, updater: (current: any) => any): void {
-    if (!path || typeof updater !== "function") return;
+    if (!path || typeof updater !== 'function') return;
 
     const currentValue = this.getNestedValue(this.state, path);
     const newValue = updater(currentValue);
@@ -162,7 +153,7 @@ export class StandardStateManager extends BaseStateManager {
     // Notify all subscribers of reset
     this.subscribers.forEach((callbacks, path) => {
       const value = this.getNestedValue(this.state, path);
-      callbacks.forEach((callback) => {
+      callbacks.forEach(callback => {
         try {
           callback(value);
         } catch (error) {
@@ -188,7 +179,7 @@ export class StandardStateManager extends BaseStateManager {
     this.state = newState;
 
     // Notify all affected paths
-    notificationPaths.forEach((path) => {
+    notificationPaths.forEach(path => {
       const value = this.getNestedValue(this.state, path);
       this.notifySubscribers(path, value);
     });
@@ -227,7 +218,7 @@ export class ValidatedStateManager extends StandardStateManager {
 export class PersistentStateManager extends StandardStateManager {
   constructor(
     private persistence: IStatePersistence,
-    private persistenceKey: string = "app-state",
+    private persistenceKey: string = 'app-state'
   ) {
     super();
     this.loadFromPersistence();
@@ -243,9 +234,7 @@ export class PersistentStateManager extends StandardStateManager {
     await this.saveToPersistence();
   }
 
-  async batchUpdate(
-    updates: Array<{ path: string; value: any }>,
-  ): Promise<void> {
+  async batchUpdate(updates: Array<{ path: string; value: any }>): Promise<void> {
     super.batchUpdate(updates);
     await this.saveToPersistence();
   }
@@ -257,7 +246,7 @@ export class PersistentStateManager extends StandardStateManager {
         this.state = persistedState;
       }
     } catch (error) {
-      console.error("Error loading persisted state:", error);
+      console.error('Error loading persisted state:', error);
     }
   }
 
@@ -265,7 +254,7 @@ export class PersistentStateManager extends StandardStateManager {
     try {
       await this.persistence.save(this.persistenceKey, this.state);
     } catch (error) {
-      console.error("Error saving state to persistence:", error);
+      console.error('Error saving state to persistence:', error);
     }
   }
 
@@ -273,7 +262,7 @@ export class PersistentStateManager extends StandardStateManager {
     try {
       await this.persistence.remove(this.persistenceKey);
     } catch (error) {
-      console.error("Error clearing persisted state:", error);
+      console.error('Error clearing persisted state:', error);
     }
   }
 }

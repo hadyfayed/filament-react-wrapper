@@ -100,9 +100,9 @@ class ComponentVersioningService {
    * Register a new component version
    */
   registerVersion(
-    componentName: string, 
-    version: string, 
-    component: unknown, 
+    componentName: string,
+    version: string,
+    component: unknown,
     metadata: Partial<ComponentMetadata> = {}
   ): void {
     if (!this.versions.has(componentName)) {
@@ -110,7 +110,7 @@ class ComponentVersioningService {
     }
 
     const componentVersions = this.versions.get(componentName)!;
-    
+
     const fullMetadata: ComponentMetadata = {
       name: componentName,
       description: metadata.description || '',
@@ -120,7 +120,7 @@ class ComponentVersioningService {
       changelog: metadata.changelog || [],
       tags: metadata.tags || [],
       category: metadata.category || 'general',
-      apiVersion: metadata.apiVersion || '1.0.0'
+      apiVersion: metadata.apiVersion || '1.0.0',
     };
 
     const componentVersion: ComponentVersion = {
@@ -128,7 +128,7 @@ class ComponentVersioningService {
       component: component as React.ComponentType<Record<string, unknown>>,
       metadata: fullMetadata,
       deprecated: false,
-      dependencies: metadata.dependencies || []
+      dependencies: metadata.dependencies || [],
     };
 
     componentVersions.set(version, componentVersion);
@@ -175,8 +175,9 @@ class ComponentVersioningService {
       return [];
     }
 
-    return Array.from(componentVersions.values())
-      .sort((a, b) => this.compareVersions(b.version, a.version)); // Latest first
+    return Array.from(componentVersions.values()).sort((a, b) =>
+      this.compareVersions(b.version, a.version)
+    ); // Latest first
   }
 
   /**
@@ -207,9 +208,9 @@ class ComponentVersioningService {
    * Deprecate a component version
    */
   deprecateVersion(
-    componentName: string, 
-    version: string, 
-    message?: string, 
+    componentName: string,
+    version: string,
+    message?: string,
     migrationPath?: string
   ): void {
     const componentVersion = this.getComponentVersion(componentName, version);
@@ -217,10 +218,10 @@ class ComponentVersioningService {
       componentVersion.deprecated = true;
       componentVersion.deprecationMessage = message;
       componentVersion.migrationPath = migrationPath;
-      
+
       devTools.warn(`Component version deprecated: ${componentName}@${version}`, {
         message,
-        migrationPath
+        migrationPath,
       });
     }
   }
@@ -235,11 +236,11 @@ class ComponentVersioningService {
     migrationFn: MigrationFunction
   ): void {
     const key = `${componentName}:${fromVersion}->${toVersion}`;
-    
+
     if (!this.migrations.has(key)) {
       this.migrations.set(key, []);
     }
-    
+
     this.migrations.get(key)!.push(migrationFn);
     devTools.log(`Migration registered: ${key}`);
   }
@@ -260,13 +261,13 @@ class ComponentVersioningService {
       migratedProps: { ...props },
       warnings: [],
       errors: [],
-      manualStepsRequired: false
+      manualStepsRequired: false,
     };
 
     try {
       // Find migration path
       const migrationPath = this.findMigrationPath(componentName, fromVersion, toVersion);
-      
+
       if (migrationPath.length === 0) {
         result.errors.push(`No migration path found from ${fromVersion} to ${toVersion}`);
         return result;
@@ -274,30 +275,30 @@ class ComponentVersioningService {
 
       // Apply migrations step by step
       let currentProps = { ...props };
-      
+
       for (const step of migrationPath) {
         const migrations = this.migrations.get(step) || [];
-        
+
         for (const migration of migrations) {
           try {
             const [fromPart, toPart] = step.split('->');
             const fromVersion = fromPart?.split(':')[1];
             const toVersion = toPart;
-            
+
             if (!fromVersion || !toVersion) {
               result.errors.push(`Invalid migration step format: ${step}`);
               return result;
             }
-            
+
             const migrationResult = await migration(currentProps, {
               componentName,
               fromVersion,
-              toVersion
+              toVersion,
             });
 
             currentProps = migrationResult.props;
-            result.warnings.push(...migrationResult.warnings || []);
-            
+            result.warnings.push(...(migrationResult.warnings || []));
+
             if (migrationResult.manualStepsRequired) {
               result.manualStepsRequired = true;
             }
@@ -310,7 +311,7 @@ class ComponentVersioningService {
 
       result.migratedProps = currentProps;
       result.success = result.errors.length === 0;
-      
+
       return result;
     } catch (error) {
       result.errors.push(`Migration error: ${error}`);
@@ -330,7 +331,7 @@ class ComponentVersioningService {
       compatible: true,
       issues: [],
       recommendations: [],
-      autoMigrationAvailable: false
+      autoMigrationAvailable: false,
     };
 
     const fromVersionObj = this.getComponentVersion(componentName, fromVersion);
@@ -341,20 +342,24 @@ class ComponentVersioningService {
       result.issues.push({
         severity: 'error',
         type: 'version_not_found',
-        description: 'One or both versions not found'
+        description: 'One or both versions not found',
       });
       return result;
     }
 
     // Check breaking changes
-    if ((toVersionObj as ComponentVersion & { breakingChanges?: BreakingChange[] }).breakingChanges) {
-      for (const change of (toVersionObj as ComponentVersion & { breakingChanges: BreakingChange[] }).breakingChanges) {
+    if (
+      (toVersionObj as ComponentVersion & { breakingChanges?: BreakingChange[] }).breakingChanges
+    ) {
+      for (const change of (
+        toVersionObj as ComponentVersion & { breakingChanges: BreakingChange[] }
+      ).breakingChanges) {
         result.issues.push({
           severity: 'warning',
           type: 'breaking_change',
           description: change.description,
           affectedProps: change.affectedProps,
-          solution: change.migration
+          solution: change.migration,
         });
       }
     }
@@ -375,7 +380,7 @@ class ComponentVersioningService {
       if (ruleResult) {
         result.issues.push(...ruleResult.issues);
         result.recommendations.push(...ruleResult.recommendations);
-        
+
         if (ruleResult.issues.some(issue => issue.severity === 'error')) {
           result.compatible = false;
         }
@@ -413,7 +418,7 @@ class ComponentVersioningService {
    */
   findBestVersion(componentName: string, constraint: VersionConstraint): string | null {
     const versions = this.getAllVersions(componentName);
-    
+
     for (const versionObj of versions) {
       if (this.satisfiesConstraint(versionObj.version, constraint)) {
         return versionObj.version;
@@ -430,7 +435,7 @@ class ComponentVersioningService {
     if (!this.compatibilityRules.has(componentName)) {
       this.compatibilityRules.set(componentName, []);
     }
-    
+
     this.compatibilityRules.get(componentName)!.push(rule);
   }
 
@@ -445,9 +450,7 @@ class ComponentVersioningService {
       changelog.push(...version.metadata.changelog);
     }
 
-    return changelog.sort((a, b) => 
-      this.compareVersions(b.version, a.version)
-    );
+    return changelog.sort((a, b) => this.compareVersions(b.version, a.version));
   }
 
   /**
@@ -472,7 +475,7 @@ class ComponentVersioningService {
         latestVersion: versions[0]?.version,
         deprecatedVersions: versions.filter(v => v.deprecated).length,
         hasBreakingChanges: versions.some(v => v.breakingChanges && v.breakingChanges.length > 0),
-        dependencies: versions[0]?.dependencies || []
+        dependencies: versions[0]?.dependencies || [],
       };
     }
 
@@ -480,15 +483,14 @@ class ComponentVersioningService {
     const allComponents = Array.from(this.versions.keys());
     return {
       totalComponents: allComponents.length,
-      totalVersions: allComponents.reduce((sum, name) => 
-        sum + this.getAllVersions(name).length, 0
+      totalVersions: allComponents.reduce((sum, name) => sum + this.getAllVersions(name).length, 0),
+      componentsWithMultipleVersions: allComponents.filter(
+        name => this.getAllVersions(name).length > 1
       ),
-      componentsWithMultipleVersions: allComponents.filter(name => 
-        this.getAllVersions(name).length > 1
+      deprecatedVersions: allComponents.reduce(
+        (sum, name) => sum + this.getAllVersions(name).filter(v => v.deprecated).length,
+        0
       ),
-      deprecatedVersions: allComponents.reduce((sum, name) => 
-        sum + this.getAllVersions(name).filter(v => v.deprecated).length, 0
-      )
     };
   }
 
@@ -510,16 +512,16 @@ class ComponentVersioningService {
   private compareVersions(a: string, b: string): number {
     const aParts = a.split('.').map(Number);
     const bParts = b.split('.').map(Number);
-    
+
     for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
       const aPart = aParts[i] || 0;
       const bPart = bParts[i] || 0;
-      
+
       if (aPart !== bPart) {
         return aPart - bPart;
       }
     }
-    
+
     return 0;
   }
 
@@ -534,8 +536,7 @@ class ComponentVersioningService {
       return [directPath];
     }
 
-    // TODO: Implement more sophisticated path finding (Dijkstra's algorithm)
-    // For now, return empty if no direct path
+    // Return empty if no direct path
     return [];
   }
 
@@ -560,26 +561,26 @@ class ComponentVersioningService {
     if (!currentVersion) {
       return false;
     }
-    
+
     // Simple semantic version compatibility check
     const current = currentVersion.split('.').map(Number);
     const required = requiredVersion.split('.').map(Number);
-    
+
     // Major version must match
     if (current[0] !== required[0]) {
       return false;
     }
-    
+
     // Minor version must be >= required
     if ((current[1] || 0) < (required[1] || 0)) {
       return false;
     }
-    
+
     // Patch version must be >= required if minor versions are equal
     if (current[1] === required[1] && (current[2] || 0) < (required[2] || 0)) {
       return false;
     }
-    
+
     return true;
   }
 }
@@ -622,7 +623,7 @@ export type {
   CompatibilityIssue,
   VersionConstraint,
   MigrationFunction,
-  CompatibilityRule
+  CompatibilityRule,
 };
 
 // Default export

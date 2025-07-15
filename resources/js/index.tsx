@@ -1,29 +1,45 @@
-// React Wrapper - Complete system in a single file
-import {
-  componentRegistry,
-  registerComponents,
-} from "./components/ReactComponentRegistry";
-import { universalReactRenderer } from "./components/UniversalReactRenderer";
+// React Wrapper - Complete system with enhanced features
+import { componentRegistry, registerComponents } from './components/ReactComponentRegistry';
+import { universalReactRenderer } from './components/UniversalReactRenderer';
 import {
   StateManagerProvider,
   useStateManager,
   useStatePath,
   withStateManager,
   globalStateManager,
-} from "./components/StateManager";
+} from './components/StateManager';
+import { statePersistenceService, usePersistedState } from './services/StatePersistenceService';
+import { devTools } from './services/DevTools';
+import { codeSplittingService } from './services/CodeSplittingService';
+import { componentVersioningService } from './services/ComponentVersioningService';
+
+// Enhanced features (MingleJS-inspired)
 import {
-  statePersistenceService,
-  usePersistedState,
-} from "./services/StatePersistenceService";
-import { devTools } from "./services/DevTools";
-import { codeSplittingService } from "./services/CodeSplittingService";
-import { componentVersioningService } from "./services/ComponentVersioningService";
-import type { ReactWrapperAPI } from "./types";
+  EnhancedStateProvider,
+  useEnhancedStateManager,
+  useEnhancedStatePath,
+  useFilamentState,
+  StateManagerFactory,
+  type StateManagerConfig,
+} from './components/EnhancedStateManager';
+import {
+  Component,
+  registerComponent,
+  getComponent,
+  listComponents,
+  mountIsland,
+  autoMountIslands,
+  createComponent,
+  registerComponents as registerComponentsSimple,
+} from './components/SimpleRegistration';
+import { useFilamentBridge, use$wire, filamentBridge } from './services/FilamentBridge';
+
+import type { ReactWrapperAPI } from './types';
 
 // Import the Filament adapter to ensure it's loaded
-import "./components/adapters/FilamentReactAdapter";
+import './components/adapters/FilamentReactAdapter';
 
-// Export all functionality
+// Export all functionality (backward compatibility)
 export {
   // Registry
   componentRegistry,
@@ -32,12 +48,19 @@ export {
   // Renderer
   universalReactRenderer,
 
-  // State Management
+  // State Management (original)
   StateManagerProvider,
   useStateManager,
   useStatePath,
   withStateManager,
   globalStateManager,
+
+  // Enhanced State Management
+  EnhancedStateProvider,
+  useEnhancedStateManager,
+  useEnhancedStatePath,
+  useFilamentState,
+  StateManagerFactory,
 
   // Persistence
   statePersistenceService,
@@ -47,20 +70,39 @@ export {
   devTools,
   codeSplittingService,
   componentVersioningService,
+
+  // Simple Registration (MingleJS-inspired)
+  Component,
+  registerComponent,
+  getComponent,
+  listComponents,
+  mountIsland,
+  autoMountIslands,
+  createComponent,
+  registerComponentsSimple,
+
+  // Laravel-style Bridge
+  useFilamentBridge,
+  use$wire,
+  filamentBridge,
 };
 
 // Export types
-export * from "./types";
+export * from './types';
+export type { StateManagerConfig };
 
 // Bootstrap function for initialization
 export function bootstrap() {
-  console.log("React Wrapper initialized for Filament integration");
+  console.log('React Wrapper initialized for Filament integration');
   return true;
 }
 
-// Make functionality globally available
-if (typeof window !== "undefined") {
-  (window as any).ReactWrapper = {
+// Make functionality globally available with namespacing
+if (typeof window !== 'undefined') {
+  // Initialize namespace
+  (window as any).FilamentReact = (window as any).FilamentReact || {};
+
+  (window as any).FilamentReact.ReactWrapper = {
     componentRegistry,
     universalReactRenderer,
     globalStateManager,
@@ -71,7 +113,8 @@ if (typeof window !== "undefined") {
     bootstrap,
   };
 
-  // Make componentRegistry available directly for Blade templates
+  // Backward compatibility
+  (window as any).ReactWrapper = (window as any).FilamentReact.ReactWrapper;
   (window as any).ReactComponentRegistry = componentRegistry;
 
   // Auto-bootstrap

@@ -44,6 +44,33 @@ class AssetManager
     }
 
     /**
+     * Check if Laravel bundle is available
+     */
+    public function isLaravelBundleAvailable(): bool
+    {
+        return File::exists(public_path('vendor/react-wrapper/js/react-wrapper.js'));
+    }
+
+    /**
+     * Check if we should use Laravel bundle
+     */
+    public function shouldUseLaravelBundle(): bool
+    {
+        // Force Laravel bundle if configured
+        if (config('react-wrapper.assets.force_laravel_bundle', false)) {
+            return $this->isLaravelBundleAvailable();
+        }
+
+        // Use Laravel bundle in production if available and no dev server
+        if (app()->isProduction() && $this->isLaravelBundleAvailable()) {
+            return true;
+        }
+
+        // Use Laravel bundle if available and dev server is not running
+        return $this->isLaravelBundleAvailable() && !$this->isViteDevServerRunning();
+    }
+
+    /**
      * Check if Vite dev server is running
      */
     public function isViteDevServerRunning(): bool
@@ -289,6 +316,60 @@ class AssetManager
     }
 
     /**
+     * Get the main React Wrapper bundle URL
+     */
+    public function getMainBundleUrl(): ?string
+    {
+        if ($this->shouldUseLaravelBundle()) {
+            return asset('vendor/react-wrapper/js/react-wrapper.js');
+        }
+
+        if ($this->isViteDevServerRunning()) {
+            $devServerUrl = config('react-wrapper.vite.dev_server_url', 'http://localhost:5173');
+            return rtrim($devServerUrl, '/') . '/resources/js/index.tsx';
+        }
+
+        // Try Vite manifest
+        $mainAssetUrl = $this->getAssetUrl('resources/js/index.tsx');
+        return $mainAssetUrl;
+    }
+
+    /**
+     * Generate the main bundle script tag
+     */
+    public function generateMainBundleScript(): string
+    {
+        $bundleUrl = $this->getMainBundleUrl();
+        if (!$bundleUrl) {
+            return '';
+        }
+
+        if ($this->shouldUseLaravelBundle()) {
+            // Laravel bundle includes React and ReactDOM externally
+            return '<script src="' . htmlspecialchars($bundleUrl) . '" defer></script>';
+        }
+
+        // Vite dev server or built assets
+        return '<script type="module" src="' . htmlspecialchars($bundleUrl) . '"></script>';
+    }
+
+    /**
+     * Generate required external dependencies for Laravel bundle
+     */
+    public function generateExternalDependencies(): array
+    {
+        if (!$this->shouldUseLaravelBundle()) {
+            return [];
+        }
+
+        // Laravel bundle expects React and ReactDOM to be available globally
+        return [
+            '<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>',
+            '<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>',
+        ];
+    }
+
+    /**
      * Generate lazy loading script for components
      */
     public function generateLazyLoadScript(array $components): string
@@ -297,6 +378,12 @@ class AssetManager
             return '';
         }
 
+        // If using Laravel bundle, components are all included in the main bundle
+        if ($this->shouldUseLaravelBundle()) {
+            return $this->generateLaravelBundleComponentScript($components);
+        }
+
+        // Vite-based lazy loading (existing logic)
         $componentAssets = [];
         foreach ($components as $componentName) {
             $assets = $this->getComponentAssets($componentName);
@@ -375,6 +462,45 @@ class AssetManager
                     
                     document.querySelectorAll('[data-react-component][data-lazy=\"true\"]').forEach(el => {
                         observer.observe(el);
+                    });
+                };
+                
+                // Initialize on DOM ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', window.ReactWrapper.initializeLazyLoading);
+                } else {
+                    window.ReactWrapper.initializeLazyLoading();
+                }
+            })();
+        </script>";
+    }
+
+    /**
+     * Generate Laravel bundle component initialization script
+     */
+    protected function generateLaravelBundleComponentScript(array $components): string
+    {
+        $componentsJson = json_encode($components, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+        return "<script>
+            (function() {
+                const components = {$componentsJson};
+                
+                window.ReactWrapper = window.ReactWrapper || {};
+                window.ReactWrapper.loadComponent = function(componentName) {
+                    // With Laravel bundle, all components are pre-loaded
+                    console.debug('Component available in bundle:', componentName);
+                    return Promise.resolve();
+                };
+                
+                // Initialize components immediately since they're in the bundle
+                window.ReactWrapper.initializeLazyLoading = function() {
+                    document.querySelectorAll('[data-react-component]').forEach(el => {
+                        const componentName = el.getAttribute('data-react-component');
+                        if (components.includes(componentName)) {
+                            // Component is available in the main bundle
+                            window.ReactWrapper.initializeComponent && window.ReactWrapper.initializeComponent(el);
+                        }
                     });
                 };
                 

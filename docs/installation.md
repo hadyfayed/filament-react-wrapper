@@ -18,17 +18,26 @@ This guide will walk you through installing and setting up React Wrapper in your
 
 ## 📦 Package Installation
 
-### 1. Install NPM Package
+### 1. Install Core Packages
 
 ```bash
+# Required packages
 npm install @hadyfayed/filament-react-wrapper
-```
-
-### 2. Install Composer Package
-
-```bash
 composer require hadyfayed/filament-react-wrapper
 ```
+
+### 2. Enhanced Developer Experience (Recommended)
+
+```bash
+# Install the Vite plugin for auto-discovery and dev tools
+npm install --save-dev vite-plugin-filament-react
+```
+
+💡 **Why use the plugin?** The [`vite-plugin-filament-react`](https://github.com/hadyfayed/vite-plugin-filament-react) provides:
+- 🔍 **Auto-discovery** of React components
+- 🛠️ **Dev tools** (component inspector, state debugger)
+- ⚡ **Performance optimization** and code splitting
+- 🐘 **PHP registry generation** for server-side integration
 
 ## 🔧 Laravel Setup
 
@@ -57,9 +66,44 @@ import '@hadyfayed/filament-react-wrapper';
 import './bootstrap-react';
 ```
 
-### 3. Configure Vite (Laravel 9+)
+### 3. Configure Vite
 
 Update your `vite.config.js`:
+
+#### Option A: With vite-plugin-filament-react (Recommended)
+
+```javascript
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import react from '@vitejs/plugin-react';
+import filamentReact from 'vite-plugin-filament-react';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/app.js'],
+            refresh: true,
+        }),
+        react(),
+        filamentReact({
+            discovery: {
+                packagePaths: ['resources/js'],
+                composer: {
+                    enabled: true,
+                    includePackages: ['*filament*', '*react*'],
+                }
+            },
+            devTools: {
+                componentInspector: true,
+                stateDebugger: true,
+                performanceMonitor: true,
+            }
+        }),
+    ],
+});
+```
+
+#### Option B: Basic Configuration
 
 ```javascript
 import { defineConfig } from 'vite';
@@ -72,7 +116,7 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
         }),
-        react(), // Add React plugin
+        react(),
     ],
     resolve: {
         alias: {
@@ -85,8 +129,11 @@ export default defineConfig({
 ### 4. Install React Dependencies
 
 ```bash
+# Install React runtime
 npm install react@^18.0.0 react-dom@^18.0.0
-npm install -D @vitejs/plugin-react
+
+# Install Vite React plugin
+npm install -D @vitejs/plugin-react@^4.6.0
 ```
 
 ### 5. Build Assets

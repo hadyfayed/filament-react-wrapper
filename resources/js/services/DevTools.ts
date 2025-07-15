@@ -39,7 +39,7 @@ class DevTools {
 
   constructor() {
     this._isEnabled = this.shouldEnable();
-    
+
     if (this._isEnabled) {
       this.initializeDevTools();
     }
@@ -48,12 +48,10 @@ class DevTools {
   private shouldEnable(): boolean {
     return (
       typeof window !== 'undefined' &&
-      (
-        (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') ||
+      ((typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') ||
         window.location.hostname === 'localhost' ||
         window.location.search.includes('react-wrapper-debug=true') ||
-        localStorage.getItem('react-wrapper-debug') === 'true'
-      )
+        localStorage.getItem('react-wrapper-debug') === 'true')
     );
   }
 
@@ -71,7 +69,7 @@ class DevTools {
 
     // Add keyboard shortcuts
     this.setupKeyboardShortcuts();
-    
+
     // Setup performance observer
     this.setupPerformanceObserver();
   }
@@ -79,7 +77,7 @@ class DevTools {
   private setupKeyboardShortcuts(): void {
     if (typeof window === 'undefined') return;
 
-    window.addEventListener('keydown', (event) => {
+    window.addEventListener('keydown', event => {
       // Ctrl/Cmd + Shift + R + W = Show React Wrapper debug panel
       if (event.ctrlKey && event.shiftKey && event.key === 'W') {
         event.preventDefault();
@@ -104,14 +102,14 @@ class DevTools {
     if (typeof window === 'undefined' || !window.PerformanceObserver) return;
 
     try {
-      const observer = new PerformanceObserver((list) => {
+      const observer = new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
           if (entry.name.startsWith('react-wrapper-')) {
             this.recordPerformanceMetric({
               componentName: entry.name.replace('react-wrapper-', ''),
               mountTime: entry.startTime,
               renderTime: entry.duration,
-              propsChanges: 0 // Will be updated separately
+              propsChanges: 0, // Will be updated separately
             });
           }
         }
@@ -134,13 +132,13 @@ class DevTools {
       renderCount: 1,
       lastRenderTime: Date.now(),
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     this.components.set(name, info);
     this.notifyObservers({
       type: 'component:mounted',
-      data: { name, props }
+      data: { name, props },
     });
 
     this.log(`Component mounted: ${name}`, props);
@@ -158,7 +156,7 @@ class DevTools {
 
     this.notifyObservers({
       type: 'component:rendered',
-      data: { name, props, renderCount: info?.renderCount }
+      data: { name, props, renderCount: info?.renderCount },
     });
   }
 
@@ -167,7 +165,7 @@ class DevTools {
 
     this.notifyObservers({
       type: 'component:unmounted',
-      data: { name }
+      data: { name },
     });
 
     this.log(`Component unmounted: ${name}`);
@@ -183,7 +181,7 @@ class DevTools {
 
     this.notifyObservers({
       type: 'component:error',
-      data: { name, error }
+      data: { name, error },
     });
 
     this.error(`Component error in ${name}:`, error);
@@ -199,7 +197,7 @@ class DevTools {
 
     this.notifyObservers({
       type: 'component:warning',
-      data: { name, warning }
+      data: { name, warning },
     });
 
     this.warn(`Component warning in ${name}:`, warning);
@@ -214,7 +212,7 @@ class DevTools {
       oldValue,
       newValue,
       timestamp: Date.now(),
-      source
+      source,
     };
 
     this.stateHistory.push(change);
@@ -226,7 +224,7 @@ class DevTools {
 
     this.notifyObservers({
       type: 'state:changed',
-      data: change
+      data: change,
     });
 
     this.log(`State changed: ${path}`, { oldValue, newValue, source });
@@ -245,7 +243,7 @@ class DevTools {
 
     this.notifyObservers({
       type: 'performance:metric',
-      data: metric
+      data: metric,
     });
 
     // Warn about slow renders
@@ -261,7 +259,7 @@ class DevTools {
 
   endPerformanceMeasure(name: string): void {
     if (!this.isEnabled || typeof performance === 'undefined') return;
-    
+
     try {
       performance.mark(`react-wrapper-${name}-end`);
       performance.measure(
@@ -349,29 +347,39 @@ class DevTools {
 
     const content = document.createElement('div');
     content.style.cssText = 'padding: 10px; max-height: 550px; overflow-y: auto;';
-    
+
     content.innerHTML = `
       <div>
         <h3>Components (${this.components.size})</h3>
-        ${Array.from(this.components.entries()).map(([name, info]) => `
+        ${Array.from(this.components.entries())
+          .map(
+            ([name, info]) => `
           <div style="margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
             <strong>${name}</strong><br>
             Renders: ${info.renderCount}<br>
             Errors: ${info.errors.length}<br>
             Warnings: ${info.warnings.length}
           </div>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
       
       <div style="margin-top: 20px;">
         <h3>Recent State Changes (${this.stateHistory.slice(-5).length})</h3>
-        ${this.stateHistory.slice(-5).reverse().map(change => `
+        ${this.stateHistory
+          .slice(-5)
+          .reverse()
+          .map(
+            change => `
           <div style="margin-bottom: 8px; padding: 6px; background: #fff3cd; border-radius: 4px; font-size: 11px;">
             <strong>${change.path}</strong><br>
             ${new Date(change.timestamp).toLocaleTimeString()}<br>
             Source: ${change.source}
           </div>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
       
       <div style="margin-top: 20px;">
@@ -392,7 +400,7 @@ class DevTools {
 
   private getAverageRenderTime(): string {
     if (this.performanceMetrics.length === 0) return '0';
-    
+
     const total = this.performanceMetrics.reduce((sum, metric) => sum + metric.renderTime, 0);
     return (total / this.performanceMetrics.length).toFixed(2);
   }
@@ -473,7 +481,7 @@ class DevTools {
   disable(): void {
     this._isEnabled = false;
     localStorage.removeItem('react-wrapper-debug');
-    
+
     // Remove debug panel if exists
     const panel = document.getElementById('react-wrapper-debug-panel');
     if (panel) {

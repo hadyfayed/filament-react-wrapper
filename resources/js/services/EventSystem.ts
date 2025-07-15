@@ -3,13 +3,10 @@
  * Following Single Responsibility Principle
  */
 
-import { IEventSystem } from "../interfaces/IComponentRegistry";
+import { IEventSystem } from '../interfaces/IComponentRegistry';
 
 export class EventSystem implements IEventSystem {
-  private listeners: Map<
-    string,
-    Array<{ callback: Function; priority: number }>
-  > = new Map();
+  private listeners: Map<string, Array<{ callback: Function; priority: number }>> = new Map();
 
   on(event: string, callback: Function, priority: number = 10): void {
     if (!this.listeners.has(event)) {
@@ -25,7 +22,7 @@ export class EventSystem implements IEventSystem {
   off(event: string, callback: Function): void {
     const listeners = this.listeners.get(event);
     if (listeners) {
-      const index = listeners.findIndex((l) => l.callback === callback);
+      const index = listeners.findIndex(l => l.callback === callback);
       if (index !== -1) {
         listeners.splice(index, 1);
       }
@@ -63,9 +60,6 @@ export class EventSystem implements IEventSystem {
     if (event) {
       return this.listeners.get(event)?.length || 0;
     }
-    return Array.from(this.listeners.values()).reduce(
-      (total, arr) => total + arr.length,
-      0,
-    );
+    return Array.from(this.listeners.values()).reduce((total, arr) => total + arr.length, 0);
   }
 }

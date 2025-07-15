@@ -18,9 +18,7 @@ class ReactPhpFunctionMap
                 'php' => 'session(["user" => $user]); session("user");'
             ],
             'integration_methods' => [
-                'VariableShareService::shareGlobal("state", $data)',
-                'session()->put("react_state", $state)',
-                'cache()->put("component_state", $data, 3600)'
+                'VariableShareService::shareGlobal("state", $data)'
             ]
         ],
 
@@ -34,9 +32,7 @@ class ReactPhpFunctionMap
                 'php' => 'Event::listen("ModelUpdated", fn() => dispatch(new ProcessData));'
             ],
             'integration_methods' => [
-                'Event::dispatch("react.effect", $data)',
-                'dispatch(new ProcessReactEffect($component, $props))',
-                'Observer::observe(Model::class, fn() => broadcast(...))'
+                'Event::dispatch("react.effect", $data)'
             ]
         ],
 
@@ -50,9 +46,7 @@ class ReactPhpFunctionMap
                 'php' => '$theme = app("theme.manager")->getCurrentTheme();'
             ],
             'integration_methods' => [
-                'app()->singleton("react.context", $contextProvider)',
-                'VariableShareService::shareGlobal("context", $data)',
-                'config(["react.context" => $contextData])'
+                'VariableShareService::shareGlobal("context", $data)'
             ]
         ],
 
@@ -67,8 +61,7 @@ class ReactPhpFunctionMap
             ],
             'integration_methods' => [
                 'Action classes with execute() method',
-                'Command pattern implementation',
-                'Event-driven state updates'
+                'Command pattern implementation'
             ]
         ],
 
@@ -82,9 +75,7 @@ class ReactPhpFunctionMap
                 'php' => 'Cache::remember("callback_result", 3600, fn() => expensiveOperation());'
             ],
             'integration_methods' => [
-                'Cache::remember() for expensive operations',
-                'Memoization in service classes',
-                'Route model binding for optimized queries'
+                'Cache::remember() for expensive operations'
             ]
         ],
 
@@ -98,9 +89,7 @@ class ReactPhpFunctionMap
                 'php' => 'Cache::remember("computed_value", 3600, fn() => $this->calculate());'
             ],
             'integration_methods' => [
-                'Eloquent accessors with caching',
-                'Cache::remember() for computed values',
-                'View composers for cached data'
+                'Cache::remember() for computed values'
             ]
         ],
 
@@ -114,9 +103,7 @@ class ReactPhpFunctionMap
                 'php' => 'session(["form_refs" => ["input_id" => $inputElement]]);'
             ],
             'integration_methods' => [
-                'Session-based DOM reference tracking',
-                'Model binding for form elements',
-                'Cache-based element state storage'
+                'Session-based DOM reference tracking'
             ]
         ],
 
@@ -130,9 +117,7 @@ class ReactPhpFunctionMap
                 'php' => 'public function boot() { $this->initializeService(); }'
             ],
             'integration_methods' => [
-                'Service Provider boot() methods',
-                'Model boot() methods',
-                'Event::listen("component.mounted", ...)'
+                'Service Provider boot() methods'
             ]
         ],
 
@@ -146,9 +131,7 @@ class ReactPhpFunctionMap
                 'php' => 'public function show(User $user, PostRepository $posts) { ... }'
             ],
             'integration_methods' => [
-                'VariableShareService::shareToComponent($name, $props)',
-                'Constructor dependency injection',
-                'Method parameter injection'
+                'VariableShareService::shareToComponent($name, $props)'
             ]
         ],
 
@@ -162,9 +145,7 @@ class ReactPhpFunctionMap
                 'php' => 'Route::post("/handle-click", [Controller::class, "handleClick"]);'
             ],
             'integration_methods' => [
-                'Route::post() for form submissions',
-                'Event::listen() for model events',
-                'Livewire actions for real-time updates'
+                'Route::post() for form submissions'
             ]
         ],
 
@@ -178,9 +159,7 @@ class ReactPhpFunctionMap
                 'php' => 'public function store(CreateUserRequest $request) { ... }'
             ],
             'integration_methods' => [
-                'Form Request classes for validation',
-                'Rule::exists() for database validation',
-                'Request::validate() for inline validation'
+                'Form Request classes for validation'
             ]
         ],
 
@@ -194,9 +173,7 @@ class ReactPhpFunctionMap
                 'php' => 'Http::get("external-api")->json(); User::all();'
             ],
             'integration_methods' => [
-                'API Resource classes for JSON responses',
-                'Http::get() for external API calls',
-                'Eloquent relationships for data loading'
+                'API Resource classes for JSON responses'
             ]
         ],
 
@@ -210,9 +187,7 @@ class ReactPhpFunctionMap
                 'php' => 'Route::get("/users/{user}", [UserController::class, "show"]);'
             ],
             'integration_methods' => [
-                'Route model binding for automatic injection',
-                'Named routes for URL generation',
-                'Route::resource() for RESTful routes'
+                'Route model binding for automatic injection'
             ]
         ],
 
@@ -226,9 +201,7 @@ class ReactPhpFunctionMap
                 'php' => 'Auth::user(); Auth::login($user); Auth::logout();'
             ],
             'integration_methods' => [
-                'Auth::user() shared globally',
-                'Policy classes for authorization',
-                'Gate::allows() for permission checks'
+                'Auth::user() shared globally'
             ]
         ],
 
@@ -242,9 +215,7 @@ class ReactPhpFunctionMap
                 'php' => 'try { ... } catch (Exception $e) { report($e); }'
             ],
             'integration_methods' => [
-                'App\\Exceptions\\Handler for global errors',
-                'rescue() helper for safe operations',
-                'Log::error() for error reporting'
+                'App\\Exceptions\\Handler for global errors'
             ]
         ],
 
@@ -258,9 +229,7 @@ class ReactPhpFunctionMap
                 'php' => 'LazyCollection::make($generator)->chunk(100)->each(...);'
             ],
             'integration_methods' => [
-                'AssetManager::queueComponent() for lazy loading',
-                'LazyCollection for memory-efficient processing',
-                'Queue::push() for deferred processing'
+                'AssetManager::queueComponent() for lazy loading'
             ]
         ],
 
@@ -274,9 +243,7 @@ class ReactPhpFunctionMap
                 'php' => '$this->get("/component")->assertStatus(200)->assertSee("content");'
             ],
             'integration_methods' => [
-                'Feature tests for full integration testing',
-                'Http::fake() for API testing',
-                'Browser testing with Laravel Dusk'
+                'Feature tests for full integration testing'
             ]
         ]
     ];

@@ -11,13 +11,25 @@ interface GlobalStateManagerInterface {
 
 declare global {
   interface Window {
+    // Namespaced globals for better organization
+    FilamentReact?: {
+      ReactWrapper?: unknown;
+      WorkflowCanvas?: unknown;
+    };
+
+    // Legacy compatibility globals
     ReactComponentRegistry?: unknown;
+    ReactWrapper?: unknown;
     ReactWrapperConfig?: unknown;
+    WorkflowCanvas?: unknown;
     workflowDataSync?: (statePath: string, data: any) => void;
     __REACT_WRAPPER_DEV_TOOLS__?: unknown;
     globalStateManager?: GlobalStateManagerInterface;
     statePersistenceService?: unknown;
-    requestIdleCallback?: (callback: (deadline: IdleDeadline) => void, options?: IdleRequestOptions) => number;
+    requestIdleCallback?: (
+      callback: (deadline: IdleDeadline) => void,
+      options?: IdleRequestOptions
+    ) => number;
     cancelIdleCallback?: (handle: number) => void;
   }
 
@@ -87,7 +99,10 @@ declare global {
   }
 
   declare const IntersectionObserver: {
-    new (callback: IntersectionObserverCallback, options?: IntersectionObserverInit): IntersectionObserver;
+    new (
+      callback: IntersectionObserverCallback,
+      options?: IntersectionObserverInit
+    ): IntersectionObserver;
   };
 
   interface IntersectionObserver {

@@ -215,25 +215,37 @@ class VariableShareService
 
     /**
      * Share Filament panel data if available
+     * Delegates to FilamentIntegration for comprehensive data sharing
      */
     public function shareFilamentData(): void
     {
         if (!class_exists('\Filament\Facades\Filament')) {
             return;
         }
-
+        
         try {
-            $panel = \Filament\Facades\Filament::getCurrentPanel();
-            if ($panel) {
-                $this->shareGlobal('filament', [
-                    'panel_id' => $panel->getId(),
-                    'panel_path' => $panel->getPath(),
-                    'theme' => $panel->getTheme(),
-                    'dark_mode' => $panel->hasDarkMode(),
-                ]);
+            // Let FilamentIntegration handle comprehensive Filament data sharing
+            $filamentIntegration = app(\HadyFayed\ReactWrapper\Integrations\FilamentIntegration::class);
+            if ($filamentIntegration->isFilamentAvailable()) {
+                // FilamentIntegration will handle the data sharing via its own methods
+                // This prevents duplication and ensures consistency
+                logger()->debug('Filament data sharing delegated to FilamentIntegration');
             }
         } catch (\Exception $e) {
-            // Filament not available or no current panel
+            // Filament integration not available - fall back to basic sharing
+            try {
+                $panel = \Filament\Facades\Filament::getCurrentPanel();
+                if ($panel) {
+                    $this->shareGlobal('filament', [
+                        'panel_id' => $panel->getId(),
+                        'panel_path' => $panel->getPath(),
+                        'theme' => $panel->getTheme(),
+                        'dark_mode' => $panel->hasDarkMode(),
+                    ]);
+                }
+            } catch (\Exception $fallbackError) {
+                logger()->debug('Filament data sharing failed', ['error' => $fallbackError->getMessage()]);
+            }
         }
     }
 

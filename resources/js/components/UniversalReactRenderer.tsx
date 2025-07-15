@@ -1,6 +1,6 @@
-import React from "react";
-import { createRoot, Root } from "react-dom/client";
-import { componentRegistry } from "./ReactComponentRegistry";
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+import { componentRegistry } from './ReactComponentRegistry';
 
 // Interface for component data and state synchronization
 export interface ReactRendererProps {
@@ -22,10 +22,7 @@ class ReactErrorBoundary extends React.Component<
   { children: React.ReactNode; onError?: (error: Error) => void },
   ErrorBoundaryState
 > {
-  constructor(props: {
-    children: React.ReactNode;
-    onError?: (error: Error) => void;
-  }) {
+  constructor(props: { children: React.ReactNode; onError?: (error: Error) => void }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -35,7 +32,7 @@ class ReactErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("React component error:", error, errorInfo);
+    console.error('React component error:', error, errorInfo);
     this.props.onError?.(error);
   }
 
@@ -45,7 +42,7 @@ class ReactErrorBoundary extends React.Component<
         <div className="p-4 border border-red-300 rounded-md bg-red-50">
           <h3 className="text-red-800 font-medium">Component Error</h3>
           <p className="text-red-600 text-sm mt-1">
-            {this.state.error?.message || "An unexpected error occurred"}
+            {this.state.error?.message || 'An unexpected error occurred'}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: undefined })}
@@ -80,20 +77,20 @@ const UniversalReactWrapper: React.FC<{
       | React.ComponentType<Record<string, unknown>>
       | React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>>
       | null = React.useMemo(() => {
-        if (!componentDef) return null;
-        
-        if (componentDef.isAsync) {
-          // If isAsync is true, we assume componentDef.component is the function that returns a promise
-          return React.lazy(
-            componentDef.component as () => Promise<{
-              default: React.ComponentType<Record<string, unknown>>;
-            }>,
-          );
-        } else {
-          // Otherwise, it's a regular React component type
-          return componentDef.component as React.ComponentType<Record<string, unknown>>;
-        }
-      }, [componentDef]);
+      if (!componentDef) return null;
+
+      if (componentDef.isAsync) {
+        // If isAsync is true, we assume componentDef.component is the function that returns a promise
+        return React.lazy(
+          componentDef.component as () => Promise<{
+            default: React.ComponentType<Record<string, unknown>>;
+          }>
+        );
+      } else {
+        // Otherwise, it's a regular React component type
+        return componentDef.component as React.ComponentType<Record<string, unknown>>;
+      }
+    }, [componentDef]);
 
     // Use useMemo to prevent unnecessary re-renders when props haven't changed
     const mergedProps = React.useMemo(
@@ -102,20 +99,18 @@ const UniversalReactWrapper: React.FC<{
         ...componentProps,
         onDataChange,
       }),
-      [componentDef?.defaultProps, componentProps, onDataChange],
+      [componentDef?.defaultProps, componentProps, onDataChange]
     );
 
     // Handle missing component after all hooks have been called
     if (!componentDef || !Component) {
-      const error = new Error(
-        `Component "${componentName}" not found in registry`,
-      );
+      const error = new Error(`Component "${componentName}" not found in registry`);
       onError?.(error);
       return (
         <div className="p-4 border border-yellow-300 rounded-md bg-yellow-50">
           <p className="text-yellow-800">
-            Component &quot;{componentName}&quot; not found. Available components:{" "}
-            {componentRegistry.getComponentNames().join(", ") || "None"}
+            Component &quot;{componentName}&quot; not found. Available components:{' '}
+            {componentRegistry.getComponentNames().join(', ') || 'None'}
           </p>
         </div>
       );
@@ -142,32 +137,29 @@ const UniversalReactWrapper: React.FC<{
       if (prevProps.componentProps === nextProps.componentProps) {
         return true;
       }
-      
+
       // Compare object keys for basic structure check
       const prevKeys = Object.keys(prevProps.componentProps || {});
       const nextKeys = Object.keys(nextProps.componentProps || {});
-      
+
       if (prevKeys.length !== nextKeys.length) {
         return false;
       }
-      
+
       // Only use JSON stringify for small objects (< 10 keys)
       if (prevKeys.length < 10) {
         return (
-          JSON.stringify(prevProps.componentProps) ===
-          JSON.stringify(nextProps.componentProps)
+          JSON.stringify(prevProps.componentProps) === JSON.stringify(nextProps.componentProps)
         );
       }
-      
+
       // For larger objects, do shallow comparison
-      return prevKeys.every(key => 
-        prevProps.componentProps[key] === nextProps.componentProps[key]
-      );
+      return prevKeys.every(key => prevProps.componentProps[key] === nextProps.componentProps[key]);
     } catch {
       // If comparison fails, fall back to reference equality
       return prevProps.componentProps === nextProps.componentProps;
     }
-  },
+  }
 );
 
 // Universal React renderer class
@@ -221,10 +213,10 @@ export class UniversalReactRenderer {
           onDataChange={handleDataChange}
           onError={onError}
           statePath={statePath}
-        />,
+        />
       );
     } catch (error) {
-      console.error("Error rendering React component:", error);
+      console.error('Error rendering React component:', error);
       onError?.(error as Error);
     }
   }
@@ -237,16 +229,14 @@ export class UniversalReactRenderer {
     const container = this.containers.get(containerId);
 
     if (!root || !container) {
-      console.warn(
-        `No rendered component found for container "${containerId}"`,
-      );
+      console.warn(`No rendered component found for container "${containerId}"`);
       return;
     }
 
     // Re-render with updated props
     const existingData = container.dataset;
     this.render({
-      component: existingData.component || "",
+      component: existingData.component || '',
       props: newProps,
       statePath: existingData.statePath,
       containerId,
@@ -300,13 +290,13 @@ export class UniversalReactRenderer {
 export const universalReactRenderer = new UniversalReactRenderer();
 
 // Auto-cleanup on page unload
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
     universalReactRenderer.unmountAll();
   });
 }
 
 // Make renderer available globally
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
   (window as any).universalReactRenderer = universalReactRenderer;
 }

@@ -217,8 +217,8 @@ export default defineConfig({
     this.log('Optimizing build...');
 
     // Analyze bundle size
-    if (fs.existsSync('dist/index.es.js')) {
-      const stats = fs.statSync('dist/index.es.js');
+    if (fs.existsSync('dist/react-wrapper/index.es.js')) {
+      const stats = fs.statSync('dist/react-wrapper/index.es.js');
       const sizeKB = (stats.size / 1024).toFixed(2);
       this.log(`ES bundle size: ${sizeKB} KB`);
 
@@ -261,11 +261,23 @@ export default defineConfig({
   async validateBuild() {
     this.log('Validating build output...');
 
-    const requiredFiles = [
-      'dist/index.es.js',
-      'dist/index.d.ts',
-      'dist/package.json'
-    ];
+    const requiredFiles = [];
+    
+    // Target-specific validation
+    if (this.buildTarget === 'all' || this.buildTarget === 'es') {
+      requiredFiles.push('dist/react-wrapper/index.es.js', 'dist/react-wrapper/types/index.d.ts');
+    }
+    
+    if (this.buildTarget === 'all' || this.buildTarget === 'laravel') {
+      requiredFiles.push('dist/laravel/js/react-wrapper.js');
+    }
+    
+    if (this.buildTarget === 'all' || this.buildTarget === 'umd') {
+      requiredFiles.push('dist/umd/react-wrapper.umd.js');
+    }
+    
+    // Always check for package.json
+    requiredFiles.push('dist/package.json');
 
     for (const file of requiredFiles) {
       if (!fs.existsSync(file)) {
@@ -274,12 +286,14 @@ export default defineConfig({
     }
 
     // Check if ES module can be imported
-    try {
-      // Skip require validation for ES modules due to CommonJS/ESM compatibility issues
-      // this.exec('node -e "require(\'./dist/index.es.js\')"', { stdio: 'pipe' });
-      this.log('ES module validation skipped (CommonJS/ESM compatibility)', 'debug');
-    } catch {
-      this.log('ES module validation failed', 'warning');
+    if (this.buildTarget === 'all' || this.buildTarget === 'es') {
+      try {
+        // Skip require validation for ES modules due to CommonJS/ESM compatibility issues
+        // this.exec('node -e "require(\'./dist/index.es.js\')"', { stdio: 'pipe' });
+        this.log('ES module validation skipped (CommonJS/ESM compatibility)', 'debug');
+      } catch {
+        this.log('ES module validation failed', 'warning');
+      }
     }
 
     this.log('Build validation completed', 'success');

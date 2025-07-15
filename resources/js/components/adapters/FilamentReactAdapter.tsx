@@ -1,4 +1,4 @@
-import { universalReactRenderer } from "../UniversalReactRenderer";
+import { universalReactRenderer } from '../UniversalReactRenderer';
 
 // Filament-specific adapter for React components
 export class FilamentReactAdapter {
@@ -9,8 +9,8 @@ export class FilamentReactAdapter {
    */
   static initializeComponents(): void {
     // Wait for DOM to be ready
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
         this.scanAndRenderComponents();
       });
     } else {
@@ -26,14 +26,14 @@ export class FilamentReactAdapter {
    */
   private static scanAndRenderComponents(): void {
     const containers = document.querySelectorAll(
-      "[data-react-component]:not([data-react-rendered])",
+      '[data-react-component]:not([data-react-rendered])'
     );
 
     // Process containers in batches to avoid blocking the main thread
     const processContainers = (
       containers: NodeListOf<Element>,
       startIndex: number,
-      batchSize: number,
+      batchSize: number
     ) => {
       const endIndex = Math.min(startIndex + batchSize, containers.length);
 
@@ -62,10 +62,7 @@ export class FilamentReactAdapter {
     const statePath = element.dataset.reactStatePath;
 
     if (!componentName) {
-      console.warn(
-        "React component container missing component name:",
-        element,
-      );
+      console.warn('React component container missing component name:', element);
       return;
     }
 
@@ -75,7 +72,7 @@ export class FilamentReactAdapter {
     }
 
     // Mark as processed to avoid duplicate rendering
-    element.setAttribute("data-react-rendered", "true");
+    element.setAttribute('data-react-rendered', 'true');
 
     try {
       let props = {};
@@ -83,7 +80,10 @@ export class FilamentReactAdapter {
         try {
           props = JSON.parse(propsData);
         } catch (parseError) {
-          console.warn(`Invalid JSON in data-react-props for component "${componentName}":`, parseError);
+          console.warn(
+            `Invalid JSON in data-react-props for component "${componentName}":`,
+            parseError
+          );
           props = {};
         }
       }
@@ -97,66 +97,59 @@ export class FilamentReactAdapter {
             props: props,
             containerId: element.id,
             statePath: statePath,
-            onDataChange: (data) => {
+            onDataChange: data => {
               // Emit custom event for Filament/Livewire integration
               if (statePath) {
                 element.dispatchEvent(
-                  new CustomEvent("react-data-change", {
+                  new CustomEvent('react-data-change', {
                     detail: { data, statePath },
                     bubbles: true,
-                  }),
+                  })
                 );
               }
             },
-            onError: (error) => {
-              console.error(
-                `Error in Filament React component "${componentName}":`,
-                error,
-              );
+            onError: error => {
+              console.error(`Error in Filament React component "${componentName}":`, error);
 
               // Remove the rendered flag so it can be retried
-              element.removeAttribute("data-react-rendered");
+              element.removeAttribute('data-react-rendered');
 
               // Emit error event
               element.dispatchEvent(
-                new CustomEvent("react-error", {
+                new CustomEvent('react-error', {
                   detail: {
-                    error:
-                      error instanceof Error ? error.message : String(error),
+                    error: error instanceof Error ? error.message : String(error),
                     componentName,
                   },
                   bubbles: true,
-                }),
+                })
               );
             },
           });
         } catch (error) {
           // This catch block handles errors that occur before the component is rendered
           // For example, errors in parsing props or finding the component
-          console.error(
-            `Error setting up React component "${componentName}":`,
-            error,
-          );
+          console.error(`Error setting up React component "${componentName}":`, error);
 
           // Remove the rendered flag so it can be retried
-          element.removeAttribute("data-react-rendered");
+          element.removeAttribute('data-react-rendered');
 
           // Emit error event
           element.dispatchEvent(
-            new CustomEvent("react-error", {
+            new CustomEvent('react-error', {
               detail: {
                 error: error instanceof Error ? error.message : String(error),
                 componentName,
               },
               bubbles: true,
-            }),
+            })
           );
         }
       }, 0);
     } catch (error) {
-      console.error("Error parsing React component props:", error, element);
+      console.error('Error parsing React component props:', error, element);
       // Remove the rendered flag so it can be retried
-      element.removeAttribute("data-react-rendered");
+      element.removeAttribute('data-react-rendered');
     }
   }
 
@@ -169,21 +162,21 @@ export class FilamentReactAdapter {
       this.mutationObserver.disconnect();
     }
 
-    this.mutationObserver = new MutationObserver((mutations) => {
+    this.mutationObserver = new MutationObserver(mutations => {
       let hasNewComponents = false;
 
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element;
 
             // Check if the node itself is a React component container
-            if (element.hasAttribute("data-react-component")) {
+            if (element.hasAttribute('data-react-component')) {
               hasNewComponents = true;
             }
 
             // Check for React component containers within the added node
-            if (element.querySelectorAll("[data-react-component]").length > 0) {
+            if (element.querySelectorAll('[data-react-component]').length > 0) {
               hasNewComponents = true;
             }
           }
@@ -218,7 +211,7 @@ export class FilamentReactAdapter {
       this.mutationObserver.disconnect();
       this.mutationObserver = null;
     }
-    
+
     if (this.scanTimeout) {
       clearTimeout(this.scanTimeout);
       this.scanTimeout = null;
@@ -234,19 +227,14 @@ export class FilamentReactAdapter {
     props?: Record<string, any>;
     containerId?: string;
   }): HTMLElement {
-    const {
-      component,
-      statePath,
-      props = {},
-      containerId = `react-${Date.now()}`,
-    } = options;
+    const { component, statePath, props = {}, containerId = `react-${Date.now()}` } = options;
 
-    const container = document.createElement("div");
+    const container = document.createElement('div');
     container.id = containerId;
     container.dataset.reactComponent = component;
     container.dataset.reactStatePath = statePath;
     container.dataset.reactProps = JSON.stringify(props);
-    container.className = "react-component-container";
+    container.className = 'react-component-container';
 
     return container;
   }
@@ -259,10 +247,10 @@ export class FilamentReactAdapter {
 
     // Find containers for this component and update them
     const containers = document.querySelectorAll(
-      `[data-react-component="${component}"][data-react-state-path="${statePath}"]`,
+      `[data-react-component="${component}"][data-react-state-path="${statePath}"]`
     );
 
-    containers.forEach((container) => {
+    containers.forEach(container => {
       const element = container as HTMLElement;
       if (element.id && universalReactRenderer.hasActiveComponent(element.id)) {
         universalReactRenderer.updateProps(element.id, data);
@@ -275,20 +263,20 @@ export class FilamentReactAdapter {
 FilamentReactAdapter.initializeComponents();
 
 // Listen for Livewire events
-if (typeof window !== "undefined") {
-  document.addEventListener("livewire:update", (event) => {
+if (typeof window !== 'undefined') {
+  document.addEventListener('livewire:update', event => {
     FilamentReactAdapter.handleLivewireUpdate(event as CustomEvent);
   });
 
   // Re-scan after Livewire navigation
-  document.addEventListener("livewire:navigated", () => {
+  document.addEventListener('livewire:navigated', () => {
     setTimeout(() => {
       FilamentReactAdapter.initializeComponents();
     }, 100);
   });
 
   // Cleanup on page unload to prevent memory leaks
-  window.addEventListener("beforeunload", () => {
+  window.addEventListener('beforeunload', () => {
     FilamentReactAdapter.cleanup();
   });
 }

@@ -7,9 +7,7 @@ import React from 'react';
 
 export interface IComponentDefinition {
   name: string;
-  component:
-    | React.ComponentType<any>
-    | (() => Promise<{ default: React.ComponentType<any> }>);
+  component: React.ComponentType<any> | (() => Promise<{ default: React.ComponentType<any> }>);
   isAsync?: boolean;
   defaultProps?: Record<string, any>;
   propTypes?: Record<string, any>;
@@ -44,7 +42,7 @@ export interface IComponentMetadata {
 export type IComponentMiddleware = (
   component: React.ComponentType<any>,
   props: Record<string, any>,
-  context: IComponentContext,
+  context: IComponentContext
 ) => React.ComponentType<any> | Promise<React.ComponentType<any>>;
 
 export interface IComponentContext {
@@ -63,10 +61,7 @@ export interface IHookManager {
 export interface IComponentRegistry {
   register(definition: IComponentDefinition): void;
   get(name: string): IComponentDefinition | undefined;
-  create(
-    name: string,
-    props?: Record<string, any>,
-  ): React.ComponentType<any> | null;
+  create(name: string, props?: Record<string, any>): React.ComponentType<any> | null;
   has(name: string): boolean;
   unregister(name: string): boolean;
   clear(): void;
@@ -76,11 +71,7 @@ export interface IComponentRegistry {
     categoryCounts: Record<string, number>;
     tagCounts: Record<string, number>;
   };
-  mount(
-    componentName: string,
-    containerId: string,
-    props?: Record<string, any>,
-  ): void;
+  mount(componentName: string, containerId: string, props?: Record<string, any>): void;
   unmount(containerId: string): void;
 }
 
